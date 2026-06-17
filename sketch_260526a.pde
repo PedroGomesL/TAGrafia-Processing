@@ -1,3 +1,5 @@
+import processing.javafx.*;
+
 ArrayList<Produto> produtos = new ArrayList<Produto>();
 ArrayList<Evento> eventos = new ArrayList<Evento>();
 ArrayList<Escola> escolas = new ArrayList<Escola>();
@@ -26,7 +28,7 @@ float eventoArrastoStartY;
 boolean eventoCardArrastou = false;
 
 void setup() {
-  size(1024, 768);
+  size(1024, 768, FX2D);
 
   carregarBancosDeDados();
   carregarBancoDeImagens();
