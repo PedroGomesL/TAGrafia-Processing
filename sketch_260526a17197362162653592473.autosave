@@ -1,0 +1,16 @@
+void setup() {
+  size(1000, 600);
+  background(240);
+  
+  // 1. Carrega os textos (TSV)
+  iniciarBancoDeDados();
+  
+  // 2. Se os textos carregaram, carrega as imagens
+  if (bancoCarregadoComSucesso) {
+    iniciarBancoDeImagens();
+  }
+}
+
+void draw() {
+  // Sua visualização gráfica
+}
