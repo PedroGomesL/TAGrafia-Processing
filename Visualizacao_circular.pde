@@ -61,6 +61,7 @@ class VisualizacaoCircular {
   int anoFim = 2010;
   int handleArrastado = 0;
   TagFiltro tagEmDestaque = null;
+  ArrayList<AreaProdutoVisual> areasProdutos = new ArrayList<AreaProdutoVisual>();
 
   VisualizacaoCircular(SistemaFiltros filtros) {
     this.filtros = filtros;
@@ -153,6 +154,7 @@ class VisualizacaoCircular {
 
   void desenharProdutos(ArrayList<ProdutoVisual> produtos, HashMap<String, PVector> posicoesTags, float cx, float cy, float raio) {
     int slot = 0;
+    areasProdutos.clear();
     for (int i = 0; i < produtos.size() && slot < SLOTS_CIRCULO; i++) {
       ProdutoVisual produto = produtos.get(i);
       int segmentos = segmentosProduto(produto);
@@ -172,6 +174,10 @@ class VisualizacaoCircular {
 
       desenharConexoes(produto, posicoesTags, alvoX, alvoY);
       desenharCardProduto(produto, cardCx, cardCy, cardW, cardH, rotacao, segmentos);
+      areasProdutos.add(new AreaProdutoVisual(produto, cardCx, cardCy, cardW, cardH, rotacao));
+      if (i == 0 && painelProdutoPrecisaSelecao()) {
+        painelProdutoSelecionar(produto.produtoOriginal);
+      }
       slot += segmentos;
     }
   }
@@ -301,6 +307,12 @@ class VisualizacaoCircular {
       return false;
     }
 
+    ProdutoVisual produto = produtoSobMouse(mx, my);
+    if (produto != null) {
+      painelProdutoSelecionar(produto.produtoOriginal);
+      return true;
+    }
+
     if (clicouHandleTempo(mx, my)) {
       return true;
     }
@@ -364,6 +376,16 @@ class VisualizacaoCircular {
       PVector pos = posicaoTag(tag, cx, cy, raio);
       if (dist(mx, my, pos.x, pos.y) <= 13) {
         return tag;
+      }
+    }
+    return null;
+  }
+
+  ProdutoVisual produtoSobMouse(float mx, float my) {
+    for (int i = areasProdutos.size() - 1; i >= 0; i--) {
+      AreaProdutoVisual area = areasProdutos.get(i);
+      if (area.contem(mx, my)) {
+        return area.produto;
       }
     }
     return null;
@@ -439,7 +461,7 @@ class VisualizacaoCircular {
       }
 
       if (tagsDoProduto.size() > 0 && ligadoAoDestaque) {
-        resultado.add(new ProdutoVisual(produto.nome, produto.origem, ano, tipoProduto(produto), tagsDoProduto));
+        resultado.add(new ProdutoVisual(produto, produto.nome, produto.origem, ano, tipoProduto(produto), tagsDoProduto));
       }
     }
 
@@ -578,6 +600,7 @@ class VisualizacaoCircular {
 }
 
 class ProdutoVisual {
+  ProdutoFiltrado produtoOriginal;
   String nome;
   String origem;
   String tipo;
@@ -585,12 +608,41 @@ class ProdutoVisual {
   int peso;
   ArrayList<TagFiltro> tags;
 
-  ProdutoVisual(String nome, String origem, int ano, String tipo, ArrayList<TagFiltro> tags) {
+  ProdutoVisual(ProdutoFiltrado produtoOriginal, String nome, String origem, int ano, String tipo, ArrayList<TagFiltro> tags) {
+    this.produtoOriginal = produtoOriginal;
     this.nome = nome;
     this.origem = origem;
     this.tipo = tipo == null ? "" : tipo;
     this.ano = ano;
     this.tags = tags;
     this.peso = tags.size();
+  }
+}
+
+class AreaProdutoVisual {
+  ProdutoVisual produto;
+  float cx;
+  float cy;
+  float w;
+  float h;
+  float rotacao;
+
+  AreaProdutoVisual(ProdutoVisual produto, float cx, float cy, float w, float h, float rotacao) {
+    this.produto = produto;
+    this.cx = cx;
+    this.cy = cy;
+    this.w = w;
+    this.h = h;
+    this.rotacao = rotacao;
+  }
+
+  boolean contem(float mx, float my) {
+    float dx = mx - cx;
+    float dy = my - cy;
+    float c = cos(-rotacao);
+    float s = sin(-rotacao);
+    float localX = dx * c - dy * s;
+    float localY = dx * s + dy * c;
+    return abs(localX) <= w/2 && abs(localY) <= h/2;
   }
 }

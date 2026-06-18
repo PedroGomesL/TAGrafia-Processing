@@ -12,16 +12,21 @@ void setup() {
   if (bancoCarregadoComSucesso) {
     iniciarBancoDeImagens();
   }
+  inicializarPainelProduto();
 }
 
 void draw() {
   background(240);
   desenharVisualizacaoCircular();
+  desenharPainelProduto();
   desenharFiltroUI();
 }
 
 void mousePressed() {
   if (mouseButton == LEFT && filtroMousePressed()) {
+    return;
+  }
+  if (mouseButton == LEFT && painelProdutoMousePressed()) {
     return;
   }
   if (mouseButton == LEFT && visualizacaoCircularMousePressed()) {
@@ -44,6 +49,9 @@ void mouseReleased() {
 }
 
 void mouseWheel(processing.event.MouseEvent evento) {
+  if (painelProdutoMouseWheel(evento)) {
+    return;
+  }
   filtroMouseWheel(evento);
 }
 
