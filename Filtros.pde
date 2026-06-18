@@ -1028,14 +1028,16 @@ class FiltroInterface {
   final int CATEGORY_BAR_H = 31;
   final int SEARCH_BAR_Y = CATEGORY_BAR_Y + CATEGORY_BAR_H + 10;
   final int SEARCH_BAR_H = 31;
-  final int TAG_LIST_Y = SEARCH_BAR_Y + SEARCH_BAR_H + 18;
+  final int CLEAR_BUTTON_Y = SEARCH_BAR_Y + SEARCH_BAR_H + 10;
+  final int CLEAR_BUTTON_H = 28;
+  final int TAG_LIST_Y = CLEAR_BUTTON_Y + CLEAR_BUTTON_H + 16;
   final int TAG_ROW_H = 36;
   final int TAG_CIRCLE_SIZE = 20;
   final int SCROLL_X = 8;
   final int SCROLL_W = 5;
   final int SCROLL_MIN_THUMB_H = 34;
   final int INDICE_TODAS_TAGS = -1;
-  final String ROTULO_TODAS_TAGS = "Todas as tags";
+  final String ROTULO_TODAS_TAGS = "Tags ativas";
 
   final color COR_AMARELO = #FFCB00;
   final color COR_FUNDO = #222222;
@@ -1144,6 +1146,7 @@ class FiltroInterface {
 
     desenharBarraCategoria();
     desenharBarraBusca();
+    desenharBotaoLimparTags();
     if (seletorCategoriasAberto) {
       desenharSeletorCategorias();
     } else {
@@ -1186,9 +1189,21 @@ class FiltroInterface {
     }
   }
 
+  void desenharBotaoLimparTags() {
+    boolean ativo = filtros.tagsSelecionadas.size() > 0;
+    noStroke();
+    fill(ativo ? COR_BRANCO : color(105));
+    rect(X + CATEGORY_BAR_X, CLEAR_BUTTON_Y, CATEGORY_BAR_W, CLEAR_BUTTON_H, CLEAR_BUTTON_H/2);
+
+    fill(COR_PRETO);
+    textFont(fonteCategoria);
+    textSize(18);
+    desenharTextoCentralizado("LIMPAR TAGS", X + CATEGORY_BAR_X + CATEGORY_BAR_W/2, CLEAR_BUTTON_Y + CLEAR_BUTTON_H/2);
+  }
+
   void desenharSeletorCategorias() {
     ArrayList<CategoriaFiltro> categorias = categoriasVisiveisDaDimensao();
-    int listaY = SEARCH_BAR_Y + SEARCH_BAR_H + 12;
+    int listaY = CLEAR_BUTTON_Y + CLEAR_BUTTON_H + 12;
     int linhaH = 34;
     int totalOpcoes = categorias.size() + 1;
 
@@ -1292,6 +1307,15 @@ class FiltroInterface {
       return true;
     }
 
+    if (clicouBotaoLimparTags(mx, my)) {
+      filtros.limparSelecao();
+      textoBusca = "";
+      scrollTags = 0;
+      buscaAtiva = false;
+      seletorCategoriasAberto = false;
+      return true;
+    }
+
     if (clicouBarraCategoria(mx, my)) {
       seletorCategoriasAberto = !seletorCategoriasAberto;
       buscaAtiva = false;
@@ -1349,9 +1373,14 @@ class FiltroInterface {
       my >= SEARCH_BAR_Y && my <= SEARCH_BAR_Y + SEARCH_BAR_H;
   }
 
+  boolean clicouBotaoLimparTags(float mx, float my) {
+    return mx >= X + CATEGORY_BAR_X && mx <= X + CATEGORY_BAR_X + CATEGORY_BAR_W &&
+      my >= CLEAR_BUTTON_Y && my <= CLEAR_BUTTON_Y + CLEAR_BUTTON_H;
+  }
+
   boolean clicouOpcaoCategoria(float mx, float my) {
     ArrayList<CategoriaFiltro> categorias = categoriasVisiveisDaDimensao();
-    int listaY = SEARCH_BAR_Y + SEARCH_BAR_H + 12;
+    int listaY = CLEAR_BUTTON_Y + CLEAR_BUTTON_H + 12;
     int linhaH = 34;
 
     int totalOpcoes = categorias.size() + 1;
@@ -1551,7 +1580,7 @@ class FiltroInterface {
 
     CategoriaFiltro categoria = categoriaAtiva();
     if (categoria == null) {
-      return filtros.tagsDisponiveis(dimensaoAtivaId, true);
+      return filtros.tagsSelecionadasDaDimensao(dimensaoAtivaId);
     }
     return filtros.tagsDaCategoria(categoria, false);
   }

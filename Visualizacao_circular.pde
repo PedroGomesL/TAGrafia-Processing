@@ -1,3 +1,7 @@
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+
 VisualizacaoCircular visualizacaoCircular;
 
 void inicializarVisualizacaoCircular() {
@@ -33,6 +37,7 @@ class VisualizacaoCircular {
   final int W = 1166;
   final int H = 1080;
   final int CIRCLE_SIZE = 700;
+  final int SLOTS_CIRCULO = 38;
   final int TIMELINE_W = 1158;
   final int TIMELINE_H = 100;
   final int TIMELINE_HANDLE_W = 7;
@@ -70,9 +75,11 @@ class VisualizacaoCircular {
   void desenhar() {
     pushStyle();
     desenharFundo();
-    ArrayList<TagFiltro> tags = tagsSelecionadas();
-    ArrayList<ProdutoVisual> produtos = produtosVisiveis(tags);
-    desenharCirculo(tags, produtos);
+    ArrayList<TagFiltro> tagsAtivas = tagsSelecionadas();
+    ArrayList<TagFiltro> tagsTipoProduto = tagsDaDimensao(tagsAtivas, filtros.DIM_TIPO_OBRA);
+    ArrayList<TagFiltro> tagsVisuais = tagsParaVisualizacao(tagsAtivas);
+    ArrayList<ProdutoVisual> produtos = produtosVisiveis(tagsVisuais, tagsTipoProduto);
+    desenharCirculo(tagsVisuais, produtos);
     desenharTimeline();
     popStyle();
   }
@@ -84,8 +91,10 @@ class VisualizacaoCircular {
   }
 
   void desenharCirculo(ArrayList<TagFiltro> tags, ArrayList<ProdutoVisual> produtos) {
-    float cx = X + 350;
-    float cy = Y + 520;
+    atualizarDestaque(tags);
+
+    float cx = centroCirculoX();
+    float cy = centroCirculoY();
     float raio = CIRCLE_SIZE/2.0f;
 
     noFill();
@@ -100,7 +109,7 @@ class VisualizacaoCircular {
       desenharBolinhaTag(tag, pos);
     }
 
-    desenharProdutos(produtos, posicoesTags, cx + raio - 8, cy);
+    desenharProdutos(produtos, posicoesTags, cx, cy, raio);
 
     if (tagEmDestaque != null) {
       desenharNomeTagDestaque(tagEmDestaque, cx, cy + raio + 28);
@@ -111,10 +120,25 @@ class VisualizacaoCircular {
     }
   }
 
+  void atualizarDestaque(ArrayList<TagFiltro> tags) {
+    if (tagEmDestaque == null) {
+      return;
+    }
+
+    for (TagFiltro tag : tags) {
+      if (tag.chave().equals(tagEmDestaque.chave())) {
+        return;
+      }
+    }
+
+    tagEmDestaque = null;
+  }
+
   void desenharCirculoTracejado(float cx, float cy, float raio, int segmentos) {
     float passo = TWO_PI / segmentos;
     for (int i = 0; i < segmentos; i++) {
-      float a1 = i * passo;
+      float centroSegmento = -HALF_PI + i * passo;
+      float a1 = centroSegmento - passo * 0.21f;
       float a2 = a1 + passo * 0.42f;
       arc(cx, cy, raio * 2, raio * 2, a1, a2);
     }
@@ -127,25 +151,28 @@ class VisualizacaoCircular {
     ellipse(pos.x, pos.y, ativa ? 11 : 8, ativa ? 11 : 8);
   }
 
-  void desenharProdutos(ArrayList<ProdutoVisual> produtos, HashMap<String, PVector> posicoesTags, float saidaX, float centroY) {
-    int limite = min(produtos.size(), 14);
-    float yInicial = centroY - limite * 32;
-
-    for (int i = 0; i < limite; i++) {
+  void desenharProdutos(ArrayList<ProdutoVisual> produtos, HashMap<String, PVector> posicoesTags, float cx, float cy, float raio) {
+    int slot = 0;
+    for (int i = 0; i < produtos.size() && slot < SLOTS_CIRCULO; i++) {
       ProdutoVisual produto = produtos.get(i);
-      float cardW = constrain(120 + produto.peso * 38, 130, 285);
-      float cardH = 42 + min(2, produto.peso - 1) * 13;
-      float cardX = saidaX + 18;
-      float cardY = yInicial + i * 64;
-
-      if (i % 3 == 0) {
-        cardY -= 18;
-      } else if (i % 3 == 2) {
-        cardY += 14;
+      int segmentos = segmentosProduto(produto);
+      if (slot + segmentos > SLOTS_CIRCULO) {
+        segmentos = SLOTS_CIRCULO - slot;
       }
 
-      desenharConexoes(produto, posicoesTags, cardX, cardY + cardH/2);
-      desenharCardProduto(produto, cardX, cardY, cardW, cardH, i);
+      float angulo = anguloCentroSlots(slot, segmentos);
+      float cardW = larguraCardProduto(produto.nome);
+      float cardH = max(38, larguraSlot(raio) * segmentos * 0.92f);
+      float distancia = raio + cardW/2 + 6;
+      float cardCx = cx + cos(angulo) * distancia;
+      float cardCy = cy + sin(angulo) * distancia;
+      float alvoX = cx + cos(angulo) * raio;
+      float alvoY = cy + sin(angulo) * raio;
+      float rotacao = rotacaoLegivel(angulo);
+
+      desenharConexoes(produto, posicoesTags, alvoX, alvoY);
+      desenharCardProduto(produto, cardCx, cardCy, cardW, cardH, rotacao, segmentos);
+      slot += segmentos;
     }
   }
 
@@ -163,10 +190,9 @@ class VisualizacaoCircular {
     }
   }
 
-  void desenharCardProduto(ProdutoVisual produto, float x, float y, float w, float h, int indice) {
+  void desenharCardProduto(ProdutoVisual produto, float cx, float cy, float w, float h, float rotacao, int segmentos) {
     pushMatrix();
-    float rotacao = (indice % 4 == 0) ? radians(-13) : ((indice % 4 == 3) ? radians(8) : 0);
-    translate(x + w/2, y + h/2);
+    translate(cx, cy);
     rotate(rotacao);
 
     noStroke();
@@ -175,10 +201,37 @@ class VisualizacaoCircular {
 
     fill(#000000);
     textFont(fonteProduto);
-    textSize(tamanhoTextoProduto(produto.nome, w - 22));
+    textSize(tamanhoTextoProduto(produto.nome, w - 18));
     textAlign(CENTER, CENTER);
     text(produto.nome, -w/2 + 9, -h/2, w - 18, h);
     popMatrix();
+  }
+
+  int segmentosProduto(ProdutoVisual produto) {
+    return constrain(produto.peso, 1, 3);
+  }
+
+  float anguloCentroSlots(int slotInicial, int segmentos) {
+    return -HALF_PI + (slotInicial + (segmentos - 1) / 2.0f) * TWO_PI / SLOTS_CIRCULO;
+  }
+
+  float rotacaoLegivel(float angulo) {
+    float rotacao = angulo;
+    if (cos(angulo) < 0) {
+      rotacao += PI;
+    }
+    return rotacao;
+  }
+
+  float larguraSlot(float raio) {
+    float arco = TWO_PI * raio / SLOTS_CIRCULO;
+    return max(40, arco * 0.68f);
+  }
+
+  float larguraCardProduto(String nome) {
+    textFont(fonteProduto);
+    textSize(18);
+    return constrain(textWidth(nome) + 28, 100, 150);
   }
 
   void desenharNomeTagDestaque(TagFiltro tag, float cx, float y) {
@@ -199,7 +252,7 @@ class VisualizacaoCircular {
 
   void desenharTimeline() {
     float tx = X + 4;
-    float ty = Y + H - TIMELINE_H;
+    float ty = limiteInferiorVisual();
 
     noStroke();
     fill(temaEscuro ? #505050 : #D7D7D7);
@@ -210,11 +263,13 @@ class VisualizacaoCircular {
     fill(#FFCB00);
     rect(xInicio + TIMELINE_HANDLE_W, ty + 40, max(0, xFim - xInicio - TIMELINE_HANDLE_W), 60);
 
+    clip(xInicio + TIMELINE_HANDLE_W, ty + 40, max(0, xFim - xInicio - TIMELINE_HANDLE_W), 60);
     stroke(temaEscuro ? #202020 : #B08A00);
     strokeWeight(3);
-    for (float hx = xInicio + 20; hx < xFim - 8; hx += 18) {
+    for (float hx = xInicio - 60; hx < xFim; hx += 18) {
       line(hx, ty + 100, hx + 58, ty + 40);
     }
+    noClip();
 
     noStroke();
     fill(#FFFFFF);
@@ -282,7 +337,7 @@ class VisualizacaoCircular {
   }
 
   boolean clicouHandleTempo(float mx, float my) {
-    float ty = Y + H - TIMELINE_H;
+    float ty = limiteInferiorVisual();
     if (my < ty || my > ty + TIMELINE_H) {
       return false;
     }
@@ -301,11 +356,11 @@ class VisualizacaoCircular {
   }
 
   TagFiltro tagSobMouse(float mx, float my) {
-    float cx = X + 350;
-    float cy = Y + 520;
+    float cx = centroCirculoX();
+    float cy = centroCirculoY();
     float raio = CIRCLE_SIZE/2.0f * 0.72f;
 
-    for (TagFiltro tag : tagsSelecionadas()) {
+    for (TagFiltro tag : tagsParaVisualizacao(tagsSelecionadas())) {
       PVector pos = posicaoTag(tag, cx, cy, raio);
       if (dist(mx, my, pos.x, pos.y) <= 13) {
         return tag;
@@ -329,9 +384,37 @@ class VisualizacaoCircular {
     return tags;
   }
 
-  ArrayList<ProdutoVisual> produtosVisiveis(ArrayList<TagFiltro> tags) {
+  ArrayList<TagFiltro> tagsParaVisualizacao(ArrayList<TagFiltro> tagsAtivas) {
+    ArrayList<TagFiltro> tagsNaoTipo = new ArrayList<TagFiltro>();
+    ArrayList<TagFiltro> tagsTipoProduto = new ArrayList<TagFiltro>();
+
+    for (TagFiltro tag : tagsAtivas) {
+      if (tag.dimensao.id.equals(filtros.DIM_TIPO_OBRA)) {
+        tagsTipoProduto.add(tag);
+      } else {
+        tagsNaoTipo.add(tag);
+      }
+    }
+
+    if (tagsNaoTipo.size() > 0) {
+      return tagsNaoTipo;
+    }
+    return tagsTipoProduto;
+  }
+
+  ArrayList<TagFiltro> tagsDaDimensao(ArrayList<TagFiltro> tags, String dimensaoId) {
+    ArrayList<TagFiltro> resultado = new ArrayList<TagFiltro>();
+    for (TagFiltro tag : tags) {
+      if (tag.dimensao.id.equals(dimensaoId)) {
+        resultado.add(tag);
+      }
+    }
+    return resultado;
+  }
+
+  ArrayList<ProdutoVisual> produtosVisiveis(ArrayList<TagFiltro> tagsVisuais, ArrayList<TagFiltro> tagsTipoProduto) {
     ArrayList<ProdutoVisual> resultado = new ArrayList<ProdutoVisual>();
-    if (tags.size() == 0) {
+    if (tagsVisuais.size() == 0) {
       return resultado;
     }
 
@@ -340,29 +423,79 @@ class VisualizacaoCircular {
       if (ano < anoInicio || ano > anoFim) {
         continue;
       }
+      if (!produtoPassaFiltroTipo(produto, tagsTipoProduto)) {
+        continue;
+      }
 
       ArrayList<TagFiltro> tagsDoProduto = new ArrayList<TagFiltro>();
-      for (TagFiltro tag : tags) {
-        if (produto.possuiTag(tag) && (tagEmDestaque == null || tagEmDestaque.chave().equals(tag.chave()))) {
+      boolean ligadoAoDestaque = tagEmDestaque == null;
+      for (TagFiltro tag : tagsVisuais) {
+        if (produto.possuiTag(tag)) {
           tagsDoProduto.add(tag);
+          if (tagEmDestaque != null && tagEmDestaque.chave().equals(tag.chave())) {
+            ligadoAoDestaque = true;
+          }
         }
       }
 
-      if (tagsDoProduto.size() > 0) {
-        resultado.add(new ProdutoVisual(produto.nome, produto.origem, ano, tagsDoProduto));
+      if (tagsDoProduto.size() > 0 && ligadoAoDestaque) {
+        resultado.add(new ProdutoVisual(produto.nome, produto.origem, ano, tipoProduto(produto), tagsDoProduto));
       }
     }
 
+    final HashMap<String, Integer> frequenciasPorTipo = frequenciasTipo(resultado);
     Collections.sort(resultado, new Comparator<ProdutoVisual>() {
       public int compare(ProdutoVisual a, ProdutoVisual b) {
         if (b.peso != a.peso) {
           return b.peso - a.peso;
         }
-        return a.ano - b.ano;
+        int origemA = a.origem.equals("brasileiro") ? 1 : 0;
+        int origemB = b.origem.equals("brasileiro") ? 1 : 0;
+        if (origemB != origemA) {
+          return origemB - origemA;
+        }
+        int freqA = frequenciasPorTipo.containsKey(a.tipo) ? frequenciasPorTipo.get(a.tipo) : 0;
+        int freqB = frequenciasPorTipo.containsKey(b.tipo) ? frequenciasPorTipo.get(b.tipo) : 0;
+        if (freqB != freqA) {
+          return freqB - freqA;
+        }
+        return a.nome.compareToIgnoreCase(b.nome);
       }
     });
 
     return resultado;
+  }
+
+  boolean produtoPassaFiltroTipo(ProdutoFiltrado produto, ArrayList<TagFiltro> tagsTipoProduto) {
+    if (tagsTipoProduto.size() == 0) {
+      return true;
+    }
+    for (TagFiltro tag : tagsTipoProduto) {
+      if (produto.possuiTag(tag)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  HashMap<String, Integer> frequenciasTipo(ArrayList<ProdutoVisual> produtos) {
+    HashMap<String, Integer> frequencias = new HashMap<String, Integer>();
+    for (ProdutoVisual produto : produtos) {
+      if (produto.tipo.length() == 0) {
+        continue;
+      }
+      int atual = frequencias.containsKey(produto.tipo) ? frequencias.get(produto.tipo) : 0;
+      frequencias.put(produto.tipo, atual + 1);
+    }
+    return frequencias;
+  }
+
+  String tipoProduto(ProdutoFiltrado produto) {
+    ArrayList<TagFiltro> tipos = produto.tagsDaDimensao(filtros.DIM_TIPO_OBRA);
+    if (tipos.size() == 0) {
+      return "";
+    }
+    return tipos.get(0).rotulo;
   }
 
   int anoProduto(ProdutoFiltrado produto) {
@@ -386,7 +519,7 @@ class VisualizacaoCircular {
 
   PVector posicaoTag(TagFiltro tag, float cx, float cy, float raio) {
     int h = abs(tag.chave().hashCode());
-    float angulo = map(h % 10000, 0, 9999, PI * 0.65f, PI * 1.75f);
+    float angulo = map(h % 10000, 0, 9999, 0, TWO_PI);
     float r = raio * map((h / 10000) % 100, 0, 99, 0.35f, 1.0f);
     return new PVector(cx + cos(angulo) * r, cy + sin(angulo) * r);
   }
@@ -396,9 +529,22 @@ class VisualizacaoCircular {
     return tx + map(ano, ANO_MIN, ANO_MAX, 0, TIMELINE_W - TIMELINE_HANDLE_W);
   }
 
+  float centroCirculoX() {
+    return X + W/2.0f;
+  }
+
+  float centroCirculoY() {
+    return Y + (H - TIMELINE_H)/2.0f;
+  }
+
+  float limiteInferiorVisual() {
+    return Y + H - TIMELINE_H;
+  }
+
   int anoPorX(float x) {
     float tx = X + 4;
-    int ano = round(map(constrain(x, tx, tx + TIMELINE_W), tx, tx + TIMELINE_W, ANO_MIN, ANO_MAX) / 10.0f) * 10;
+    float fim = tx + TIMELINE_W - TIMELINE_HANDLE_W;
+    int ano = round(map(constrain(x, tx, fim), tx, fim, ANO_MIN, ANO_MAX) / 10.0f) * 10;
     return constrain(ano, ANO_MIN, ANO_MAX);
   }
 
@@ -434,13 +580,15 @@ class VisualizacaoCircular {
 class ProdutoVisual {
   String nome;
   String origem;
+  String tipo;
   int ano;
   int peso;
   ArrayList<TagFiltro> tags;
 
-  ProdutoVisual(String nome, String origem, int ano, ArrayList<TagFiltro> tags) {
+  ProdutoVisual(String nome, String origem, int ano, String tipo, ArrayList<TagFiltro> tags) {
     this.nome = nome;
     this.origem = origem;
+    this.tipo = tipo == null ? "" : tipo;
     this.ano = ano;
     this.tags = tags;
     this.peso = tags.size();
