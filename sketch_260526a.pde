@@ -7,7 +7,7 @@ void settings() {
 void setup() {
   iniciarBancoDeDados();
   inicializarSistemaFiltros();
-  inicializarVisualizacaoCircular();
+  inicializarVisualizacoes();
 
   if (bancoCarregadoComSucesso) {
     iniciarBancoDeImagens();
@@ -17,7 +17,7 @@ void setup() {
 
 void draw() {
   background(240);
-  desenharVisualizacaoCircular();
+  desenharVisualizacaoAtual();
   desenharPainelProduto();
   desenharFiltroUI();
 }
@@ -29,7 +29,7 @@ void mousePressed() {
   if (mouseButton == LEFT && painelProdutoMousePressed()) {
     return;
   }
-  if (mouseButton == LEFT && visualizacaoCircularMousePressed()) {
+  if (mouseButton == LEFT && visualizacaoAtualMousePressed()) {
     return;
   }
 }
@@ -38,14 +38,14 @@ void mouseDragged() {
   if (filtroMouseDragged()) {
     return;
   }
-  if (visualizacaoCircularMouseDragged()) {
+  if (visualizacaoAtualMouseDragged()) {
     return;
   }
 }
 
 void mouseReleased() {
   filtroMouseReleased();
-  visualizacaoCircularMouseReleased();
+  visualizacaoAtualMouseReleased();
 }
 
 void mouseWheel(processing.event.MouseEvent evento) {
@@ -56,6 +56,9 @@ void mouseWheel(processing.event.MouseEvent evento) {
 }
 
 void keyPressed() {
+  if (painelProdutoKeyPressed(key, keyCode)) {
+    return;
+  }
   if (filtroKeyPressed(key, keyCode)) {
     return;
   }

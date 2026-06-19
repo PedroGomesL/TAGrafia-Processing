@@ -19,6 +19,10 @@ boolean painelProdutoMouseWheel(processing.event.MouseEvent evento) {
   return painelProduto != null && painelProduto.mouseWheel(evento);
 }
 
+boolean painelProdutoKeyPressed(char tecla, int codigo) {
+  return painelProduto != null && painelProduto.keyPressed(tecla, codigo);
+}
+
 void painelProdutoSelecionar(ProdutoFiltrado produto) {
   if (painelProduto != null) {
     painelProduto.selecionar(produto);
@@ -38,7 +42,7 @@ class PainelProduto {
   final int INFO_H = 80;
   final float TAB_W = W / 2.0f;
   final int TAB_H = 55;
-  final int BAR_W = 500;
+  final int BAR_W = W;
   final int BAR_H = 44;
 
   final color COR_AMARELO = #FFCB00;
@@ -76,6 +80,12 @@ class PainelProduto {
   boolean esteticoAberto = true;
   float scrollDetalhes = 0;
   float maxScrollDetalhes = 0;
+  ArrayList<ProdutoFiltrado> produtosSalvos = new ArrayList<ProdutoFiltrado>();
+  String buscaSalvos = "";
+  boolean buscaSalvosAtiva = false;
+  int modoOrdenacaoSalvos = 0;
+  float scrollSalvos = 0;
+  float maxScrollSalvos = 0;
 
   PainelProduto(SistemaFiltros filtros) {
     this.filtros = filtros;
@@ -260,11 +270,7 @@ class PainelProduto {
     rect(x, y, W, max(0, height - y));
 
     if (!detalhesAtivo) {
-      fill(#FFFFFF);
-      textFont(fonteTexto);
-      textSize(15);
-      textAlign(CENTER, TOP);
-      text("Produtos salvos", x + W/2, y + 28);
+      desenharProdutosSalvos(x, y);
       return;
     }
 
@@ -287,7 +293,7 @@ class PainelProduto {
   }
 
   float desenharSecao(float x, float y, String dimensaoId, String titulo, PImage icone, boolean aberta, String texto) {
-    float barX = x + (W - BAR_W)/2.0f;
+    float barX = x;
     stroke(#000000);
     strokeWeight(1);
     fill(COR_AMARELO);
@@ -428,6 +434,11 @@ class PainelProduto {
       return false;
     }
 
+    if (clicouSalvarProduto(mx, my)) {
+      salvarProdutoAtual();
+      return true;
+    }
+
     if (clicouSeta(mx, my, true)) {
       trocarImagem(-1);
       return true;
@@ -445,8 +456,13 @@ class PainelProduto {
       }
       if (mx >= x + TAB_W && mx <= x + W) {
         detalhesAtivo = false;
+        buscaSalvosAtiva = false;
         return true;
       }
+    }
+
+    if (!detalhesAtivo) {
+      return mousePressedSalvos(mx, my);
     }
 
     float conteudoY = IMAGE_H + INFO_H + TAB_H + 1;
@@ -479,7 +495,17 @@ class PainelProduto {
 
   boolean mouseWheel(processing.event.MouseEvent evento) {
     float y = IMAGE_H + INFO_H + TAB_H + 1;
-    if (!detalhesAtivo || mxForaPainel(mouseX, mouseY) || mouseY < y || maxScrollDetalhes <= 0) {
+    if (mxForaPainel(mouseX, mouseY) || mouseY < y) {
+      return false;
+    }
+    if (!detalhesAtivo) {
+      if (maxScrollSalvos <= 0) {
+        return false;
+      }
+      scrollSalvos = constrain(scrollSalvos + evento.getCount() * 32, 0, maxScrollSalvos);
+      return true;
+    }
+    if (maxScrollDetalhes <= 0) {
       return false;
     }
     scrollDetalhes = constrain(scrollDetalhes + evento.getCount() * 32, 0, maxScrollDetalhes);
@@ -492,8 +518,41 @@ class PainelProduto {
   }
 
   boolean clicouBarraSecao(float mx, float my, float y) {
-    float x = painelX() + (W - BAR_W)/2.0f;
+    float x = painelX();
     return mx >= x && mx <= x + BAR_W && my >= y && my <= y + BAR_H;
+  }
+
+  boolean keyPressed(char tecla, int codigo) {
+    if (!buscaSalvosAtiva) {
+      return false;
+    }
+
+    if (tecla == BACKSPACE) {
+      if (buscaSalvos.length() > 0) {
+        buscaSalvos = buscaSalvos.substring(0, buscaSalvos.length() - 1);
+        scrollSalvos = 0;
+      }
+      return true;
+    }
+
+    if (tecla == DELETE) {
+      buscaSalvos = "";
+      scrollSalvos = 0;
+      return true;
+    }
+
+    if (tecla == ENTER || tecla == RETURN) {
+      buscaSalvosAtiva = false;
+      return true;
+    }
+
+    if (tecla >= 32 && tecla != CODED) {
+      buscaSalvos += tecla;
+      scrollSalvos = 0;
+      return true;
+    }
+
+    return true;
   }
 
   boolean clicouSeta(float mx, float my, boolean esquerda) {
@@ -501,6 +560,228 @@ class PainelProduto {
     float cx = esquerda ? x + 45 : x + W - 45;
     float cy = IMAGE_H - 64;
     return dist(mx, my, cx, cy) <= 30;
+  }
+
+  boolean clicouSalvarProduto(float mx, float my) {
+    if (produto == null) {
+      return false;
+    }
+    float[] centro = centroIconeContainer(0);
+    return dist(mx, my, centro[0], centro[1]) <= 24;
+  }
+
+  float[] centroIconeContainer(int indice) {
+    float x = painelX();
+    float y = IMAGE_H + 1;
+    float containerX = x + W - 250;
+    float containerY = y + INFO_H - 54;
+    float escalaContainer = 0.5f;
+    float[] centrosOriginais = {428, 325, 220, 118};
+    return new float[] {
+      containerX + centrosOriginais[indice] * escalaContainer,
+      containerY + 58 * escalaContainer
+    };
+  }
+
+  void salvarProdutoAtual() {
+    if (produto == null || produtoJaSalvo(produto)) {
+      return;
+    }
+    produtosSalvos.add(produto);
+  }
+
+  boolean produtoJaSalvo(ProdutoFiltrado alvo) {
+    for (ProdutoFiltrado salvo : produtosSalvos) {
+      if (salvo.id.equals(alvo.id) && salvo.origem.equals(alvo.origem)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void desenharProdutosSalvos(float x, float y) {
+    float topoY = y + 18;
+    float buscaX = x + 22;
+    float buscaW = 240;
+    float buscaH = 20;
+
+    noStroke();
+    fill(#D9D9D9);
+    rect(buscaX, topoY, buscaW, buscaH, buscaH/2);
+    fill(buscaSalvos.length() == 0 ? color(80) : #000000);
+    textFont(fonteTexto);
+    textSize(12);
+    textAlign(LEFT, CENTER);
+    text(buscaSalvos.length() == 0 ? "Digite o nome, tipo ou ano" : buscaSalvos, buscaX + 13, topoY + buscaH/2 - 1);
+
+    float botaoX = x + 292;
+    float botaoW = 66;
+    fill(#D9D9D9);
+    rect(botaoX, topoY, botaoW, buscaH, buscaH/2);
+    fill(#000000);
+    textAlign(CENTER, CENTER);
+    text(rotuloOrdenacaoSalvos(), botaoX + botaoW/2, topoY + buscaH/2 - 1);
+
+    ArrayList<ProdutoFiltrado> itens = produtosSalvosFiltrados();
+    float gridY = y + 58;
+    float alturaVisivel = max(0, height - gridY);
+    int colunas = 3;
+    float cardW = 92;
+    float cardH = 122;
+    float gapX = 33;
+    float gapY = 32;
+    float gridX = x + 22;
+    int linhas = ceil(itens.size() / float(colunas));
+    float alturaTotal = linhas * cardH + max(0, linhas - 1) * gapY;
+    maxScrollSalvos = max(0, alturaTotal - alturaVisivel);
+    scrollSalvos = constrain(scrollSalvos, 0, maxScrollSalvos);
+
+    clip(round(x), round(gridY), W, round(alturaVisivel));
+    pushMatrix();
+    translate(0, -scrollSalvos);
+    for (int i = 0; i < itens.size(); i++) {
+      int col = i % colunas;
+      int row = i / colunas;
+      float cx = gridX + col * (cardW + gapX);
+      float cy = gridY + row * (cardH + gapY);
+      desenharCardSalvo(itens.get(i), cx, cy, cardW, cardH);
+    }
+    popMatrix();
+    noClip();
+
+    desenharScrollSalvos(x, gridY, alturaVisivel);
+  }
+
+  void desenharCardSalvo(ProdutoFiltrado item, float x, float y, float w, float h) {
+    color corOrigem = item.origem.equals("brasileiro") ? COR_AMARELO : #FF00FB;
+    noStroke();
+    fill(#8D8D8D);
+    rect(x, y, w, 88, 7);
+    fill(#FFFFFF);
+    rect(x + 5, y + 5, w - 10, 74, 4);
+
+    PImage img = primeiraImagemProduto(item);
+    if (img != null) {
+      desenharImagemInteiraSemClip(img, x + 8, y + 8, w - 16, 68);
+    }
+
+    fill(corOrigem);
+    rect(x + 5, y + 72, w - 10, 14, 0, 0, 6, 6);
+
+    fill(#000000);
+    rect(x, y + 96, w, 19, 10);
+    fill(#FFFFFF);
+    textFont(fonteTexto);
+    textSize(tamanhoTextoAjustado(item.nome, fonteTexto, 11, 8, w - 10));
+    textAlign(CENTER, CENTER);
+    text(item.nome, x + w/2, y + 105);
+  }
+
+  void desenharScrollSalvos(float x, float y, float alturaVisivel) {
+    if (maxScrollSalvos <= 0 || alturaVisivel <= 0) {
+      return;
+    }
+    float trilhoX = x + W - 6;
+    float trilhoY = y + 4;
+    float trilhoH = alturaVisivel - 8;
+    float indicadorH = max(34, trilhoH * alturaVisivel / (alturaVisivel + maxScrollSalvos));
+    float indicadorY = trilhoY + map(scrollSalvos, 0, maxScrollSalvos, 0, trilhoH - indicadorH);
+    noStroke();
+    fill(#FFFFFF, 45);
+    rect(trilhoX, trilhoY, 3, trilhoH, 2);
+    fill(COR_AMARELO);
+    rect(trilhoX - 1, indicadorY, 5, indicadorH, 2);
+  }
+
+  boolean mousePressedSalvos(float mx, float my) {
+    float x = painelX();
+    float y = IMAGE_H + INFO_H + TAB_H + 1;
+    float topoY = y + 18;
+
+    if (my >= topoY && my <= topoY + 20 && mx >= x + 22 && mx <= x + 262) {
+      buscaSalvosAtiva = true;
+      return true;
+    }
+    buscaSalvosAtiva = false;
+
+    if (my >= topoY && my <= topoY + 20 && mx >= x + 292 && mx <= x + 358) {
+      modoOrdenacaoSalvos = (modoOrdenacaoSalvos + 1) % 3;
+      scrollSalvos = 0;
+      return true;
+    }
+
+    ProdutoFiltrado clicado = produtoSalvoSobMouse(mx, my);
+    if (clicado != null) {
+      selecionar(clicado);
+      detalhesAtivo = true;
+      return true;
+    }
+    return true;
+  }
+
+  ProdutoFiltrado produtoSalvoSobMouse(float mx, float my) {
+    float x = painelX();
+    float y = IMAGE_H + INFO_H + TAB_H + 1;
+    float gridY = y + 58;
+    if (my < gridY) {
+      return null;
+    }
+
+    ArrayList<ProdutoFiltrado> itens = produtosSalvosFiltrados();
+    float cardW = 92;
+    float cardH = 122;
+    float gapX = 33;
+    float gapY = 32;
+    float gridX = x + 22;
+    float localY = my - gridY + scrollSalvos;
+    for (int i = 0; i < itens.size(); i++) {
+      int col = i % 3;
+      int row = i / 3;
+      float cx = gridX + col * (cardW + gapX);
+      float cy = row * (cardH + gapY);
+      if (mx >= cx && mx <= cx + cardW && localY >= cy && localY <= cy + cardH) {
+        return itens.get(i);
+      }
+    }
+    return null;
+  }
+
+  ArrayList<ProdutoFiltrado> produtosSalvosFiltrados() {
+    ArrayList<ProdutoFiltrado> resultado = new ArrayList<ProdutoFiltrado>();
+    String busca = filtros.normalizarBusca(buscaSalvos);
+    for (ProdutoFiltrado item : produtosSalvos) {
+      String alvo = filtros.normalizarBusca(item.nome + " " + tipoProduto(item) + " " + anoProdutoPainel(item));
+      if (busca.length() == 0 || alvo.indexOf(busca) >= 0) {
+        resultado.add(item);
+      }
+    }
+
+    Collections.sort(resultado, new Comparator<ProdutoFiltrado>() {
+      public int compare(ProdutoFiltrado a, ProdutoFiltrado b) {
+        if (modoOrdenacaoSalvos == 1) {
+          return anoProdutoInt(a) - anoProdutoInt(b);
+        }
+        if (modoOrdenacaoSalvos == 2) {
+          int cmpTipo = tipoProduto(a).compareToIgnoreCase(tipoProduto(b));
+          if (cmpTipo != 0) {
+            return cmpTipo;
+          }
+        }
+        return a.nome.compareToIgnoreCase(b.nome);
+      }
+    });
+
+    return resultado;
+  }
+
+  String rotuloOrdenacaoSalvos() {
+    if (modoOrdenacaoSalvos == 1) {
+      return "ANO";
+    }
+    if (modoOrdenacaoSalvos == 2) {
+      return "TIPO";
+    }
+    return "A-Z";
   }
 
   void trocarImagem(int direcao) {
@@ -512,23 +793,39 @@ class PainelProduto {
   }
 
   ArrayList<PImage> imagensProduto() {
-    if (produto == null) {
+    return imagensProduto(produto);
+  }
+
+  ArrayList<PImage> imagensProduto(ProdutoFiltrado item) {
+    if (item == null) {
       return null;
     }
-    int id = idProduto();
+    int id = idProduto(item);
     if (id < 0) {
       return null;
     }
-    HashMap<Integer, ArrayList<PImage>> banco = produto.origem.equals("brasileiro") ? imagensNacionais : imagensInternacionais;
+    HashMap<Integer, ArrayList<PImage>> banco = item.origem.equals("brasileiro") ? imagensNacionais : imagensInternacionais;
     if (banco == null || !banco.containsKey(id)) {
       return null;
     }
     return banco.get(id);
   }
 
+  PImage primeiraImagemProduto(ProdutoFiltrado item) {
+    ArrayList<PImage> imagens = imagensProduto(item);
+    if (imagens == null || imagens.size() == 0) {
+      return null;
+    }
+    return imagens.get(0);
+  }
+
   int idProduto() {
+    return idProduto(produto);
+  }
+
+  int idProduto(ProdutoFiltrado item) {
     try {
-      return int(produto.id);
+      return int(item.id);
     } catch (Exception erro) {
       return -1;
     }
@@ -545,6 +842,26 @@ class PainelProduto {
       return partes[0];
     }
     return texto;
+  }
+
+  int anoProdutoInt(ProdutoFiltrado produto) {
+    String ano = anoProdutoPainel(produto);
+    try {
+      return int(ano);
+    } catch (Exception erro) {
+      return 0;
+    }
+  }
+
+  String tipoProduto(ProdutoFiltrado produto) {
+    if (produto == null) {
+      return "";
+    }
+    ArrayList<TagFiltro> tipos = produto.tagsDaDimensao(filtros.DIM_TIPO_OBRA);
+    if (tipos.size() == 0) {
+      return "";
+    }
+    return tipos.get(0).rotulo;
   }
 
   String textoMaterial() {
@@ -622,12 +939,19 @@ class PainelProduto {
     if (img == null || img.width == 0 || img.height == 0) {
       return;
     }
+    clip(round(x), round(y), round(w), round(h));
+    desenharImagemInteiraSemClip(img, x, y, w, h);
+    noClip();
+  }
+
+  void desenharImagemInteiraSemClip(PImage img, float x, float y, float w, float h) {
+    if (img == null || img.width == 0 || img.height == 0) {
+      return;
+    }
     float escala = min(w / img.width, h / img.height);
     float iw = img.width * escala;
     float ih = img.height * escala;
-    clip(round(x), round(y), round(w), round(h));
     image(img, x + (w - iw)/2, y + (h - ih)/2, iw, ih);
-    noClip();
   }
 
   void desenharIcone(PImage img, float cx, float cy, float w, float h) {
@@ -673,5 +997,16 @@ class PainelProduto {
       linhas.add(linha);
     }
     return linhas;
+  }
+
+  float tamanhoTextoAjustado(String texto, PFont fonte, float tamanhoMaximo, float tamanhoMinimo, float larguraMaxima) {
+    float tamanho = tamanhoMaximo;
+    textFont(fonte);
+    textSize(tamanho);
+    while (textWidth(texto) > larguraMaxima && tamanho > tamanhoMinimo) {
+      tamanho -= 1;
+      textSize(tamanho);
+    }
+    return tamanho;
   }
 }

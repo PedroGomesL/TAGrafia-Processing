@@ -98,6 +98,7 @@ class SistemaFiltros {
       );
 
       adicionarTagsDoProduto(produto, DIM_TIPO_OBRA, textoCelula(linha, colunaTipo));
+      adicionarTagsDoProduto(produto, DIM_TIPO_OBRA, tipoProdutoInferidoPeloNome(produto.nome));
       adicionarTagsDoProduto(produto, DIM_MATERIAL, textoCelula(linha, colunaMateriais));
       adicionarTagsDoProduto(produto, DIM_ESTETICO, textoCelula(linha, colunaEstetico));
       adicionarTagsDoProduto(produto, DIM_TECNICAS, textoCelula(linha, colunaTecnicas));
@@ -117,13 +118,49 @@ class SistemaFiltros {
       }
 
       String chave = tag.chave();
-      if (!tagsUnicasDoProduto.contains(chave)) {
+      if (!tagsUnicasDoProduto.contains(chave) && !produto.possuiTag(tag)) {
         tagsUnicasDoProduto.add(chave);
         tag.ocorrencias++;
         tag.encontradaNosDados = true;
         produto.adicionarTag(tag);
       }
     }
+  }
+
+  String tipoProdutoInferidoPeloNome(String nome) {
+    String texto = normalizarBusca(nome);
+    if (texto.length() == 0) {
+      return "";
+    }
+
+    if (contemAlgum(texto, new String[] {"cadeira", "poltrona", "sofa", "banco", "banqueta", "pufe", "chaise"})) {
+      return "Assento";
+    }
+    if (contemAlgum(texto, new String[] {"mesa", "escrivaninha", "bancada"})) {
+      return "Mesa";
+    }
+    if (contemAlgum(texto, new String[] {"luminaria", "lampada", "abajur"})) {
+      return "Iluminação";
+    }
+    if (contemAlgum(texto, new String[] {"cartaz", "poster", "selo", "revista", "livro", "capa", "tipografia"})) {
+      return "Comunicação gráfica";
+    }
+    if (contemAlgum(texto, new String[] {"radio", "telefone", "camera", "barbeador", "calculadora", "aspirador", "processador"})) {
+      return "Equipamento";
+    }
+    if (contemAlgum(texto, new String[] {"onibus", "chevrolet", "ford", "carro", "trem", "metro", "bicicleta", "aviao"})) {
+      return "Transporte";
+    }
+    if (contemAlgum(texto, new String[] {"edificio", "casa", "pavilhao", "fachada", "escola", "igreja"})) {
+      return "Arquitetura";
+    }
+    if (contemAlgum(texto, new String[] {"vaso", "jarra", "decanter", "copo", "prato", "talher", "panela", "garrafa"})) {
+      return "Utensílio";
+    }
+    if (contemAlgum(texto, new String[] {"tapecaria", "tecido", "textil", "vestido"})) {
+      return "Têxtil";
+    }
+    return "";
   }
 
   ArrayList<ProdutoFiltrado> produtosFiltrados() {
@@ -568,6 +605,7 @@ class SistemaFiltros {
   }
 
   TagFiltro criarTag(CategoriaFiltro categoria, String rotuloTag) {
+    rotuloTag = rotuloCanonicoTag(categoria.dimensao.id, rotuloTag);
     String chave = chaveTag(categoria.dimensao.id, rotuloTag);
     TagFiltro existente = tagsPorChave.get(chave);
     if (existente != null) {
@@ -581,6 +619,7 @@ class SistemaFiltros {
   }
 
   TagFiltro obterOuCriarTagObservada(String dimensaoId, String rotuloTag) {
+    rotuloTag = rotuloCanonicoTag(dimensaoId, rotuloTag);
     String chave = chaveTag(dimensaoId, rotuloTag);
     TagFiltro tag = tagsPorChave.get(chave);
     if (tag != null) {
@@ -597,6 +636,221 @@ class SistemaFiltros {
     categoria.tags.add(tag);
     tagsPorChave.put(tag.chave(), tag);
     return tag;
+  }
+
+  String rotuloCanonicoTag(String dimensaoId, String rotuloTag) {
+    String tag = normalizarBusca(rotuloTag);
+    if (tag.length() == 0) {
+      return "";
+    }
+
+    if (dimensaoId.equals(DIM_TIPO_OBRA)) {
+      if (contemAlgum(tag, new String[] {"cadeira", "poltrona", "sofa", "banco", "banqueta", "chaise", "assento"})) {
+        return "Assento";
+      }
+      if (contemAlgum(tag, new String[] {"mesa", "escrivaninha", "bancada"})) {
+        return "Mesa";
+      }
+      if (contemAlgum(tag, new String[] {"luminaria", "lampada", "abajur", "iluminacao", "design de iluminacao"})) {
+        return "Iluminação";
+      }
+      if (contemAlgum(tag, new String[] {"cartaz", "poster", "selo", "capa", "revista", "livro", "identidade visual", "logotipo",
+        "comunicacao visual", "design grafico", "obra grafica", "ilustracao", "tipografia"})) {
+        return "Comunicação gráfica";
+      }
+      if (contemAlgum(tag, new String[] {"radio", "toca", "barbeador", "calculadora", "computador", "telefone", "aparelho", "aspirador",
+        "processador", "eletrodomestico", "eletronicos", "equipamento de escritorio", "equipamento publico", "equipamento urbano"})) {
+        return "Equipamento";
+      }
+      if (contemAlgum(tag, new String[] {"onibus", "automovel", "carro", "trem", "metro", "motocicleta", "bicicleta", "veiculo",
+        "mobilidade", "transporte", "transportes"})) {
+        return "Transporte";
+      }
+      if (contemAlgum(tag, new String[] {"edificio", "pavilhao", "casa", "fachada", "arquitetura", "urbanismo", "projeto arquitetonico",
+        "componente arquitetonico", "interiores"})) {
+        return "Arquitetura";
+      }
+      if (contemAlgum(tag, new String[] {"vaso", "decanter", "jarra", "copo", "prato", "servico", "utensilio", "cozinha"})) {
+        return "Utensílio";
+      }
+      if (contemAlgum(tag, new String[] {"mobiliario", "mobiliário"})) {
+        return "Mobiliário";
+      }
+      if (contemAlgum(tag, new String[] {"textil", "tecido", "artigo textil", "artes decorativas"})) {
+        return "Têxtil";
+      }
+      if (contemAlgum(tag, new String[] {"artes plasticas", "pintura", "escultura"})) {
+        return "Artes plásticas";
+      }
+      if (contemAlgum(tag, new String[] {"joalheria"})) {
+        return "Joalheria";
+      }
+      if (contemAlgum(tag, new String[] {"material de construcao"})) {
+        return "Material de construção";
+      }
+      if (contemAlgum(tag, new String[] {"vestuario"})) {
+        return "Vestuário";
+      }
+    }
+
+    if (dimensaoId.equals(DIM_ESTETICO)) {
+      if (contemAlgum(tag, new String[] {"curvilineo", "ondular", "curvo", "sinuoso"})) {
+        return "Curvilíneo";
+      }
+      if (contemAlgum(tag, new String[] {"contorno fluido", "fluido"})) {
+        return "Fluido";
+      }
+      if (contemAlgum(tag, new String[] {"linhas limpas", "linhas continuas", "linear"})) {
+        return "Linear";
+      }
+      if (contemAlgum(tag, new String[] {"minimalismo", "minimalista"})) {
+        return "Minimalista";
+      }
+      if (contemAlgum(tag, new String[] {"design ortogonal", "ortogonal"})) {
+        return "Ortogonal";
+      }
+      if (contemAlgum(tag, new String[] {"forma escultural", "escultural"})) {
+        return "Escultural";
+      }
+      if (contemAlgum(tag, new String[] {"geometrico", "design geometrico", "geometria"})) {
+        return "Geométrico";
+      }
+      if (contemAlgum(tag, new String[] {"forma circular"})) {
+        return "Circular";
+      }
+      if (contemAlgum(tag, new String[] {"calota", "semiesfer"})) {
+        return "Semicircular";
+      }
+      if (contemAlgum(tag, new String[] {"rede de fio", "trama", "tranc", "entrelac"})) {
+        return "Entrelaçado";
+      }
+      if (contemAlgum(tag, new String[] {"botone", "textur", "canelado"})) {
+        return "Texturizado";
+      }
+      if (contemAlgum(tag, new String[] {"translucidez", "translucido"})) {
+        return "Translúcido";
+      }
+      if (contemAlgum(tag, new String[] {"design organico", "organico", "ecologico"})) {
+        return "Orgânico";
+      }
+      if (contemAlgum(tag, new String[] {"pes de metal", "metalico"})) {
+        return "Metálico";
+      }
+      if (contemAlgum(tag, new String[] {"material", "contraste material"})) {
+        return "Contraste material";
+      }
+    }
+
+    if (dimensaoId.equals(DIM_TECNICAS)) {
+      if (contemAlgum(tag, new String[] {"postura fixa", "postura flexivel", "ergonom", "inclinacao livre"})) {
+        return "Ergonomia";
+      }
+      if (contemAlgum(tag, new String[] {"encaixe", "travamento", "pino"})) {
+        return "Encaixe";
+      }
+      if (contemAlgum(tag, new String[] {"desmontavel", "flat-pack", "aninhavel", "dobravel", "estrutura desmontavel"})) {
+        return "Design desmontável";
+      }
+      if (contemAlgum(tag, new String[] {"usinagem cnc", "fresadora", "controle numerico", "usinagem"})) {
+        return "Usinagem";
+      }
+      if (contemAlgum(tag, new String[] {"moldagem por injecao", "injecao", "monobloco"})) {
+        return "Moldagem por injeção";
+      }
+      if (contemAlgum(tag, new String[] {"curvatura de madeira", "madeira prensada"})) {
+        return "Curvatura de madeira";
+      }
+      if (contemAlgum(tag, new String[] {"curvatura", "dobra", "dobradura"})) {
+        return "Dobra e curvatura";
+      }
+      if (contemAlgum(tag, new String[] {"producao em massa", "producao seriada", "seriada", "semi-industrial"})) {
+        return "Produção seriada";
+      }
+      if (contemAlgum(tag, new String[] {"colagem", "cola"})) {
+        return "Colagem";
+      }
+      if (contemAlgum(tag, new String[] {"tensionamento", "tensionadas", "tensionado"})) {
+        return "Tensionamento";
+      }
+      if (contemAlgum(tag, new String[] {"pintura", "lacada", "epoxi", "esmaltada"})) {
+        return "Pintura";
+      }
+      if (contemAlgum(tag, new String[] {"acabamento", "revestimento", "polimento", "cromagem", "douramento", "zincagem",
+        "banho metalico", "esmaltacao", "laminado", "laminacao"})) {
+        return "Acabamento";
+      }
+      if (contemAlgum(tag, new String[] {"corte", "recorte", "microperfuracao", "perfuracao"})) {
+        return "Corte";
+      }
+      if (contemAlgum(tag, new String[] {"estofamento"})) {
+        return "Estofamento";
+      }
+      if (contemAlgum(tag, new String[] {"costura"})) {
+        return "Costura";
+      }
+      if (contemAlgum(tag, new String[] {"fundicao"})) {
+        return "Fundição";
+      }
+      if (contemAlgum(tag, new String[] {"estampagem"})) {
+        return "Estampagem";
+      }
+      if (contemAlgum(tag, new String[] {"soldagem", "soldadura"})) {
+        return "Soldagem";
+      }
+      if (contemAlgum(tag, new String[] {"forjamento"})) {
+        return "Forjamento";
+      }
+      if (contemAlgum(tag, new String[] {"extrusao", "prensagem", "sopro de pet", "sopro de vidro", "insuflacao"})) {
+        return "Conformação";
+      }
+      if (contemAlgum(tag, new String[] {"montagem"})) {
+        return "Montagem";
+      }
+      if (contemAlgum(tag, new String[] {"moldagem"})) {
+        return "Moldagem";
+      }
+      if (contemAlgum(tag, new String[] {"modelagem", "modelacao"})) {
+        return "Modelagem";
+      }
+      if (contemAlgum(tag, new String[] {"marcenaria"})) {
+        return "Marcenaria";
+      }
+      if (contemAlgum(tag, new String[] {"impressao", "litografia", "litogravura", "serigrafia", "xilogravura"})) {
+        return "Impressão";
+      }
+      if (contemAlgum(tag, new String[] {"fotomontagem", "fotocomposicao", "sobreposicao grafica", "sobreposicao de imagens"})) {
+        return "Composição gráfica";
+      }
+      if (contemAlgum(tag, new String[] {"padronizacao"})) {
+        return "Padronização";
+      }
+      if (contemAlgum(tag, new String[] {"modularidade", "sistema modular", "construcao modular", "modulacao"})) {
+        return "Modularidade";
+      }
+      if (contemAlgum(tag, new String[] {"tecelagem"})) {
+        return "Tecelagem";
+      }
+      if (contemAlgum(tag, new String[] {"cofragem"})) {
+        return "Cofragem";
+      }
+      if (contemAlgum(tag, new String[] {"alvenaria"})) {
+        return "Alvenaria";
+      }
+      if (contemAlgum(tag, new String[] {"estrutura aparente", "estrutura separada", "estrutura fixa"})) {
+        return "Estrutura fixa";
+      }
+    }
+
+    return limparTag(rotuloTag);
+  }
+
+  boolean contemAlgum(String texto, String[] termos) {
+    for (String termo : termos) {
+      if (texto.indexOf(termo) >= 0) {
+        return true;
+      }
+    }
+    return false;
   }
 
   CategoriaFiltro categoriaParaTagObservada(DimensaoFiltro dimensao, String rotuloTag) {
@@ -989,6 +1243,9 @@ class ProdutoFiltrado {
   }
 
   void adicionarTag(TagFiltro tag) {
+    if (chavesTags.contains(tag.chave())) {
+      return;
+    }
     if (!tagsPorDimensao.containsKey(tag.dimensao.id)) {
       tagsPorDimensao.put(tag.dimensao.id, new ArrayList<TagFiltro>());
     }
@@ -1056,6 +1313,7 @@ class FiltroInterface {
   PImage iconeTecnica;
   PImage iconeEstetico;
   PImage iconeTipoObra;
+  PImage iconeLimparFiltro;
 
   String dimensaoAtivaId;
   HashMap<String, Integer> categoriaAtivaPorDimensao = new HashMap<String, Integer>();
@@ -1080,6 +1338,7 @@ class FiltroInterface {
     iconeTecnica = loadImage("Icones/técnica.png");
     iconeEstetico = loadImage("Icones/estético.png");
     iconeTipoObra = loadImage("Icones/tipodeproduto.png");
+    iconeLimparFiltro = loadImage("Icones/filter_alt_off.png");
 
     categoriaAtivaPorDimensao.put(filtros.DIM_MATERIAL, indiceCategoria(filtros.DIM_MATERIAL, "Plástico e Polímeros"));
     categoriaAtivaPorDimensao.put(filtros.DIM_TECNICAS, INDICE_TODAS_TAGS);
@@ -1195,10 +1454,11 @@ class FiltroInterface {
     fill(ativo ? COR_BRANCO : color(105));
     rect(X + CATEGORY_BAR_X, CLEAR_BUTTON_Y, CATEGORY_BAR_W, CLEAR_BUTTON_H, CLEAR_BUTTON_H/2);
 
-    fill(COR_PRETO);
-    textFont(fonteCategoria);
-    textSize(18);
-    desenharTextoCentralizado("LIMPAR TAGS", X + CATEGORY_BAR_X + CATEGORY_BAR_W/2, CLEAR_BUTTON_Y + CLEAR_BUTTON_H/2);
+    if (iconeLimparFiltro != null) {
+      tint(COR_PRETO, ativo ? 255 : 120);
+      desenharImagemCentralizada(iconeLimparFiltro, X + CATEGORY_BAR_X + CATEGORY_BAR_W/2, CLEAR_BUTTON_Y + CLEAR_BUTTON_H/2, 22, 22);
+      noTint();
+    }
   }
 
   void desenharSeletorCategorias() {
@@ -1206,6 +1466,10 @@ class FiltroInterface {
     int listaY = CLEAR_BUTTON_Y + CLEAR_BUTTON_H + 12;
     int linhaH = 34;
     int totalOpcoes = categorias.size() + 1;
+
+    noStroke();
+    fill(COR_BRANCO);
+    rect(X, listaY - 6, BODY_W, max(0, min(height, BODY_Y + BODY_H) - listaY + 6));
 
     for (int i = 0; i < totalOpcoes; i++) {
       int yLinha = listaY + i * linhaH;
@@ -1217,13 +1481,21 @@ class FiltroInterface {
       String rotuloOpcao = i == 0 ? ROTULO_TODAS_TAGS : categorias.get(i - 1).rotulo;
       boolean ativa = indiceCategoria == indiceCategoriaAtiva();
       noStroke();
-      fill(ativa ? corDimensaoAtiva() : COR_BRANCO);
-      rect(X + 16, yLinha, BODY_W - 32, linhaH - 4, 15);
+      if (ativa) {
+        fill(COR_AMARELO);
+        rect(X + 13, yLinha + linhaH - 6, BODY_W - 26, 3);
+      }
 
-      fill(ativa && !dimensaoAtivaId.equals(filtros.DIM_TIPO_OBRA) ? COR_BRANCO : COR_PRETO);
+      stroke(COR_PRETO);
+      strokeWeight(1);
+      line(X + 13, yLinha + linhaH - 3, X + BODY_W - 13, yLinha + linhaH - 3);
+
+      fill(COR_PRETO);
+      noStroke();
       textFont(fonteCategoria);
-      textSize(tamanhoTextoAjustado(rotuloOpcao.toUpperCase(), fonteCategoria, 18, 10, BODY_W - 44));
-      desenharTextoCentralizado(rotuloOpcao.toUpperCase(), X + BODY_W/2, yLinha + (linhaH - 4)/2);
+      textSize(tamanhoTextoAjustado(rotuloOpcao, fonteCategoria, 18, 10, BODY_W - 30));
+      textAlign(LEFT, BASELINE);
+      text(rotuloOpcao, X + 18, baselineCentral(yLinha + linhaH/2));
     }
   }
 
@@ -1537,6 +1809,9 @@ class FiltroInterface {
 
   String rotuloCategoriaAtiva() {
     if (indiceCategoriaAtiva() == INDICE_TODAS_TAGS) {
+      if (tipoProdutoLimitandoTags() && !dimensaoAtivaId.equals(filtros.DIM_TIPO_OBRA)) {
+        return "Tags do tipo";
+      }
       return ROTULO_TODAS_TAGS;
     }
 
@@ -1567,7 +1842,7 @@ class FiltroInterface {
     String busca = filtros.normalizarBusca(textoBusca);
     if (busca.length() > 0) {
       ArrayList<TagFiltro> resultado = new ArrayList<TagFiltro>();
-      ArrayList<TagFiltro> tags = filtros.tagsDisponiveis(dimensaoAtivaId, false);
+      ArrayList<TagFiltro> tags = tagsDisponiveisNoContexto();
 
       for (TagFiltro tag : tags) {
         if (filtros.normalizarBusca(tag.rotulo).indexOf(busca) >= 0) {
@@ -1580,9 +1855,60 @@ class FiltroInterface {
 
     CategoriaFiltro categoria = categoriaAtiva();
     if (categoria == null) {
+      ArrayList<TagFiltro> tagsContexto = tagsDisponiveisNoContexto();
+      if (tipoProdutoLimitandoTags() && !dimensaoAtivaId.equals(filtros.DIM_TIPO_OBRA)) {
+        return tagsContexto;
+      }
       return filtros.tagsSelecionadasDaDimensao(dimensaoAtivaId);
     }
-    return filtros.tagsDaCategoria(categoria, false);
+    ArrayList<TagFiltro> tags = filtros.tagsDaCategoria(categoria, false);
+    return filtrarTagsPorContexto(tags);
+  }
+
+  ArrayList<TagFiltro> tagsDisponiveisNoContexto() {
+    return filtrarTagsPorContexto(filtros.tagsDisponiveis(dimensaoAtivaId, false));
+  }
+
+  ArrayList<TagFiltro> filtrarTagsPorContexto(ArrayList<TagFiltro> tags) {
+    if (!tipoProdutoLimitandoTags() || dimensaoAtivaId.equals(filtros.DIM_TIPO_OBRA)) {
+      return tags;
+    }
+
+    HashSet<String> chavesPermitidas = chavesTagsDoTipoSelecionado(dimensaoAtivaId);
+    ArrayList<TagFiltro> resultado = new ArrayList<TagFiltro>();
+    for (TagFiltro tag : tags) {
+      if (chavesPermitidas.contains(tag.chave())) {
+        resultado.add(tag);
+      }
+    }
+    return resultado;
+  }
+
+  boolean tipoProdutoLimitandoTags() {
+    return filtros.tagsSelecionadasDaDimensao(filtros.DIM_TIPO_OBRA).size() > 0;
+  }
+
+  HashSet<String> chavesTagsDoTipoSelecionado(String dimensaoId) {
+    HashSet<String> chaves = new HashSet<String>();
+    ArrayList<TagFiltro> tiposSelecionados = filtros.tagsSelecionadasDaDimensao(filtros.DIM_TIPO_OBRA);
+
+    for (ProdutoFiltrado produto : filtros.produtos) {
+      boolean passaTipo = false;
+      for (TagFiltro tipo : tiposSelecionados) {
+        if (produto.possuiTag(tipo)) {
+          passaTipo = true;
+          break;
+        }
+      }
+      if (!passaTipo) {
+        continue;
+      }
+      for (TagFiltro tag : produto.tagsDaDimensao(dimensaoId)) {
+        chaves.add(tag.chave());
+      }
+    }
+
+    return chaves;
   }
 
   int indiceCategoria(String dimensaoId, String rotulo) {

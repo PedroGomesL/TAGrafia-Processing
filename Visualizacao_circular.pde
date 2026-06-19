@@ -269,13 +269,20 @@ class VisualizacaoCircular {
     fill(#FFCB00);
     rect(xInicio + TIMELINE_HANDLE_W, ty + 40, max(0, xFim - xInicio - TIMELINE_HANDLE_W), 60);
 
-    clip(xInicio + TIMELINE_HANDLE_W, ty + 40, max(0, xFim - xInicio - TIMELINE_HANDLE_W), 60);
+    float faixaX = xInicio + TIMELINE_HANDLE_W;
+    float faixaW = max(0, xFim - xInicio - TIMELINE_HANDLE_W);
+    clip(round(faixaX), round(ty + 40), round(faixaW), 60);
     stroke(temaEscuro ? #202020 : #B08A00);
     strokeWeight(3);
     for (float hx = xInicio - 60; hx < xFim; hx += 18) {
       line(hx, ty + 100, hx + 58, ty + 40);
     }
     noClip();
+
+    noStroke();
+    fill(temaEscuro ? #505050 : #D7D7D7);
+    rect(tx, ty + 40, max(0, faixaX - tx), 60);
+    rect(xFim, ty + 40, max(0, tx + TIMELINE_W - xFim), 60);
 
     noStroke();
     fill(#FFFFFF);
