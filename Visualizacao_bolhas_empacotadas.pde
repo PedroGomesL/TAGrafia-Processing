@@ -1,13 +1,16 @@
 int VISAO_CIRCULAR = 0;
 int VISAO_BOLHAS = 1;
+int VISAO_LINHA_TEMPO = 2;
 int visualizacaoAtiva = VISAO_CIRCULAR;
 PFont fonteBotaoVisualizacao;
 
 VisualizacaoBolhasEmpacotadas visualizacaoBolhas;
+VisualizacaoLinhaTempo visualizacaoLinhaTempo;
 
 void inicializarVisualizacoes() {
   inicializarVisualizacaoCircular();
   inicializarVisualizacaoBolhasEmpacotadas();
+  inicializarVisualizacaoLinhaTempo();
   fonteBotaoVisualizacao = createFont("Afacad Flux Bold", 10, true);
 }
 
@@ -16,8 +19,15 @@ void inicializarVisualizacaoBolhasEmpacotadas() {
   visualizacaoBolhas.carregarAssets();
 }
 
+void inicializarVisualizacaoLinhaTempo() {
+  visualizacaoLinhaTempo = new VisualizacaoLinhaTempo(sistemaFiltros);
+  visualizacaoLinhaTempo.carregarAssets();
+}
+
 void desenharVisualizacaoAtual() {
-  if (visualizacaoAtiva == VISAO_BOLHAS) {
+  if (visualizacaoAtiva == VISAO_LINHA_TEMPO) {
+    desenharVisualizacaoLinhaTempo();
+  } else if (visualizacaoAtiva == VISAO_BOLHAS) {
     desenharVisualizacaoBolhasEmpacotadas();
   } else {
     desenharVisualizacaoCircular();
@@ -31,10 +41,19 @@ void desenharVisualizacaoBolhasEmpacotadas() {
   }
 }
 
+void desenharVisualizacaoLinhaTempo() {
+  if (visualizacaoLinhaTempo != null) {
+    visualizacaoLinhaTempo.desenhar();
+  }
+}
+
 boolean visualizacaoAtualMousePressed() {
   if (clicouBotaoAlternarVisualizacao(mouseX, mouseY)) {
-    visualizacaoAtiva = visualizacaoAtiva == VISAO_CIRCULAR ? VISAO_BOLHAS : VISAO_CIRCULAR;
+    visualizacaoAtiva = (visualizacaoAtiva + 1) % 3;
     return true;
+  }
+  if (visualizacaoAtiva == VISAO_LINHA_TEMPO) {
+    return visualizacaoLinhaTempo != null && visualizacaoLinhaTempo.mousePressed(mouseX, mouseY);
   }
   if (visualizacaoAtiva == VISAO_BOLHAS) {
     return visualizacaoBolhas != null && visualizacaoBolhas.mousePressed(mouseX, mouseY);
@@ -43,6 +62,9 @@ boolean visualizacaoAtualMousePressed() {
 }
 
 boolean visualizacaoAtualMouseDragged() {
+  if (visualizacaoAtiva == VISAO_LINHA_TEMPO) {
+    return visualizacaoLinhaTempo != null && visualizacaoLinhaTempo.mouseDragged(mouseX, mouseY);
+  }
   if (visualizacaoAtiva == VISAO_BOLHAS) {
     return visualizacaoBolhas != null && visualizacaoBolhas.mouseDragged(mouseX, mouseY);
   }
@@ -52,6 +74,8 @@ boolean visualizacaoAtualMouseDragged() {
 void visualizacaoAtualMouseReleased() {
   if (visualizacaoAtiva == VISAO_CIRCULAR) {
     visualizacaoCircularMouseReleased();
+  } else if (visualizacaoAtiva == VISAO_LINHA_TEMPO && visualizacaoLinhaTempo != null) {
+    visualizacaoLinhaTempo.mouseReleased();
   } else if (visualizacaoBolhas != null) {
     visualizacaoBolhas.mouseReleased();
   }
@@ -77,8 +101,18 @@ void desenharBotaoAlternarVisualizacao() {
   fill(#FFFFFF);
   textFont(fonteBotaoVisualizacao);
   textAlign(CENTER, CENTER);
-  text(visualizacaoAtiva == VISAO_BOLHAS ? "C" : "B", bx + 36, by + 14);
+  text(rotuloProximaVisualizacao(), bx + 36, by + 14);
   popStyle();
+}
+
+String rotuloProximaVisualizacao() {
+  if (visualizacaoAtiva == VISAO_CIRCULAR) {
+    return "B";
+  }
+  if (visualizacaoAtiva == VISAO_BOLHAS) {
+    return "T";
+  }
+  return "C";
 }
 
 boolean clicouBotaoAlternarVisualizacao(float mx, float my) {
