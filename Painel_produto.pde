@@ -37,13 +37,13 @@ class PainelProduto {
   SistemaFiltros filtros;
   ProdutoFiltrado produto;
 
-  final int W = 505;
-  final int IMAGE_H = 337;
-  final int INFO_H = 80;
-  final float TAB_W = W / 2.0f;
-  final int TAB_H = 55;
-  final int BAR_W = W;
-  final int BAR_H = 44;
+  int W;
+  int IMAGE_H;
+  int INFO_H;
+  float TAB_W;
+  int TAB_H;
+  int BAR_W;
+  int BAR_H;
 
   final color COR_AMARELO = #FFCB00;
   final color COR_FUNDO = #222222;
@@ -89,6 +89,18 @@ class PainelProduto {
 
   PainelProduto(SistemaFiltros filtros) {
     this.filtros = filtros;
+    atualizarLayout();
+  }
+
+  void atualizarLayout() {
+    float escala = escalaPainel();
+    W = round(larguraPainelProdutoLayout());
+    IMAGE_H = round(337 * escala);
+    INFO_H = round(80 * escala);
+    TAB_W = W / 2.0f;
+    TAB_H = round(55 * escala);
+    BAR_W = W;
+    BAR_H = round(44 * escala);
   }
 
   void carregarAssets() {
@@ -126,6 +138,7 @@ class PainelProduto {
   }
 
   void desenhar() {
+    atualizarLayout();
     float x = painelX();
     pushStyle();
     noStroke();
@@ -151,19 +164,20 @@ class PainelProduto {
     } else {
       fill(#111111, 130);
       textFont(fonteTexto);
-      textSize(15);
+      textSize(15 * escalaPainel());
       textAlign(CENTER, CENTER);
       text("Imagem nao encontrada", x + W/2, y + IMAGE_H/2);
     }
 
-    desenharIcone(iconeSetaEsquerda, x + 45, y + IMAGE_H - 64, 38, 38);
-    desenharIcone(iconeSetaDireita, x + W - 45, y + IMAGE_H - 64, 38, 38);
+    desenharIcone(iconeSetaEsquerda, x + 45 * escalaPainel(), y + IMAGE_H - 64 * escalaPainel(), 38 * escalaPainel(), 38 * escalaPainel());
+    desenharIcone(iconeSetaDireita, x + W - 45 * escalaPainel(), y + IMAGE_H - 64 * escalaPainel(), 38 * escalaPainel(), 38 * escalaPainel());
   }
 
   void desenharLinhaImagem(float x, float y) {
     noStroke();
     fill(#000000);
-    rect(x + (W - 475)/2.0f, y, 475, 1);
+    float linhaW = min(W - 28 * escalaPainel(), 475 * escalaPainel());
+    rect(x + (W - linhaW)/2.0f, y, linhaW, 1);
   }
 
   void desenharInfoProduto(float x, float y) {
@@ -174,50 +188,50 @@ class PainelProduto {
     if (produto == null) {
       fill(#000000);
       textFont(fonteTexto);
-      textSize(15);
+      textSize(15 * escalaPainel());
       textAlign(LEFT, CENTER);
-      text("Selecione um produto", x + 14, y + INFO_H/2);
+      text("Selecione um produto", x + 14 * escalaPainel(), y + INFO_H/2);
       return;
     }
 
     desenharContainerProduto(x, y);
 
-    float nomeX = x + 14;
-    float nomeY = y + 25;
+    float nomeX = x + 14 * escalaPainel();
+    float nomeY = y + 25 * escalaPainel();
     String anoTexto = "(" + anoProdutoPainel(produto) + ")";
-    float larguraTitulo = W - 274;
-    float tamanhoTitulo = 20;
+    float larguraTitulo = W - 274 * escalaPainel();
+    float tamanhoTitulo = 20 * escalaPainel();
     fill(#000000);
     textAlign(LEFT, BASELINE);
     textFont(fonteTitulo);
     textSize(tamanhoTitulo);
-    while (textWidth(produto.nome) > larguraTitulo && tamanhoTitulo > 12) {
+    while (textWidth(produto.nome) > larguraTitulo && tamanhoTitulo > 12 * escalaPainel()) {
       tamanhoTitulo -= 1;
       textSize(tamanhoTitulo);
     }
     text(produto.nome, nomeX, nomeY);
 
-    float anoX = nomeX + textWidth(produto.nome) + 6;
+    float anoX = nomeX + textWidth(produto.nome) + 6 * escalaPainel();
     textFont(fonteRegular);
-    textSize(15);
-    float autorY = y + 48;
-    if (anoX + textWidth(anoTexto) < x + W - 260) {
-      text(anoTexto, anoX, nomeY - 1);
+    textSize(15 * escalaPainel());
+    float autorY = y + 48 * escalaPainel();
+    if (anoX + textWidth(anoTexto) < x + W - 260 * escalaPainel()) {
+      text(anoTexto, anoX, nomeY - 1 * escalaPainel());
     } else {
-      text(anoTexto, nomeX, y + 42);
-      autorY = y + 57;
+      text(anoTexto, nomeX, y + 42 * escalaPainel());
+      autorY = y + 57 * escalaPainel();
     }
 
     textFont(fonteLight);
-    textSize(15);
+    textSize(15 * escalaPainel());
     textAlign(LEFT, TOP);
-    text(autorProduto(produto), nomeX, autorY, W - 274, 20);
+    text(autorProduto(produto), nomeX, autorY, W - 274 * escalaPainel(), 20 * escalaPainel());
   }
 
   void desenharContainerProduto(float x, float y) {
-    float containerX = x + W - 250;
-    float containerY = y + INFO_H - 54;
-    float escalaContainer = 0.5f;
+    float containerX = x + W - 250 * escalaPainel();
+    float containerY = y + INFO_H - 54 * escalaPainel();
+    float escalaContainer = 0.5f * escalaPainel();
 
     if (iconeContainer != null) {
       clip(round(x), round(y), W, INFO_H);
@@ -226,8 +240,8 @@ class PainelProduto {
       clip(round(x), round(y), W, INFO_H);
       noStroke();
       fill(COR_AMARELO);
-      ellipse(x + W - 125, y + INFO_H, 110, 110);
-      rect(x + W - 125, y + 26, 125, INFO_H - 26);
+      ellipse(x + W - 125 * escalaPainel(), y + INFO_H, 110 * escalaPainel(), 110 * escalaPainel());
+      rect(x + W - 125 * escalaPainel(), y + 26 * escalaPainel(), 125 * escalaPainel(), INFO_H - 26 * escalaPainel());
     }
 
     PImage[] icones = {
@@ -241,7 +255,7 @@ class PainelProduto {
     float cy = containerY + 58 * escalaContainer;
     for (int i = 0; i < icones.length; i++) {
       float cx = containerX + centrosOriginais[i] * escalaContainer;
-      desenharIcone(icones[i], cx, cy, 26, 26);
+      desenharIcone(icones[i], cx, cy, 26 * escalaPainel(), 26 * escalaPainel());
     }
     noClip();
   }
@@ -259,7 +273,7 @@ class PainelProduto {
 
     fill(ativa ? #000000 : #FFFFFF);
     textFont(fonteBarra);
-    textSize(20);
+    textSize(20 * escalaPainel());
     textAlign(CENTER, CENTER);
     text(rotulo, x + TAB_W/2, y + TAB_H/2 + 1);
   }
@@ -299,13 +313,13 @@ class PainelProduto {
     fill(COR_AMARELO);
     rect(barX, y, BAR_W, BAR_H);
 
-    desenharIcone(icone, barX + 33, y + BAR_H/2, 34, 34);
+    desenharIcone(icone, barX + 33 * escalaPainel(), y + BAR_H/2, 34 * escalaPainel(), 34 * escalaPainel());
     fill(#000000);
     textFont(fonteBarra);
-    textSize(20);
+    textSize(20 * escalaPainel());
     textAlign(LEFT, CENTER);
-    text(titulo, barX + 64, y + BAR_H/2 + 1);
-    desenharIcone(aberta ? iconeClose : iconeMore, barX + BAR_W - 30, y + BAR_H/2, 24, 24);
+    text(titulo, barX + 64 * escalaPainel(), y + BAR_H/2 + 1 * escalaPainel());
+    desenharIcone(aberta ? iconeClose : iconeMore, barX + BAR_W - 30 * escalaPainel(), y + BAR_H/2, 24 * escalaPainel(), 24 * escalaPainel());
 
     if (!aberta) {
       return y + BAR_H;
@@ -429,6 +443,7 @@ class PainelProduto {
   }
 
   boolean mousePressed(float mx, float my) {
+    atualizarLayout();
     float x = painelX();
     if (mx < x || mx > x + W || my < 0 || my > height) {
       return false;
@@ -494,6 +509,7 @@ class PainelProduto {
   }
 
   boolean mouseWheel(processing.event.MouseEvent evento) {
+    atualizarLayout();
     float y = IMAGE_H + INFO_H + TAB_H + 1;
     if (mxForaPainel(mouseX, mouseY) || mouseY < y) {
       return false;
@@ -557,9 +573,9 @@ class PainelProduto {
 
   boolean clicouSeta(float mx, float my, boolean esquerda) {
     float x = painelX();
-    float cx = esquerda ? x + 45 : x + W - 45;
-    float cy = IMAGE_H - 64;
-    return dist(mx, my, cx, cy) <= 30;
+    float cx = esquerda ? x + 45 * escalaPainel() : x + W - 45 * escalaPainel();
+    float cy = IMAGE_H - 64 * escalaPainel();
+    return dist(mx, my, cx, cy) <= 30 * escalaPainel();
   }
 
   boolean clicouSalvarProduto(float mx, float my) {
@@ -567,15 +583,15 @@ class PainelProduto {
       return false;
     }
     float[] centro = centroIconeContainer(0);
-    return dist(mx, my, centro[0], centro[1]) <= 24;
+    return dist(mx, my, centro[0], centro[1]) <= 24 * escalaPainel();
   }
 
   float[] centroIconeContainer(int indice) {
     float x = painelX();
     float y = IMAGE_H + 1;
-    float containerX = x + W - 250;
-    float containerY = y + INFO_H - 54;
-    float escalaContainer = 0.5f;
+    float containerX = x + W - 250 * escalaPainel();
+    float containerY = y + INFO_H - 54 * escalaPainel();
+    float escalaContainer = 0.5f * escalaPainel();
     float[] centrosOriginais = {428, 325, 220, 118};
     return new float[] {
       containerX + centrosOriginais[indice] * escalaContainer,
@@ -932,7 +948,11 @@ class PainelProduto {
   }
 
   float painelX() {
-    return max(0, min(255 + 1166, width - W));
+    return xPainelProdutoLayout();
+  }
+
+  float escalaPainel() {
+    return escalaLayout();
   }
 
   void desenharImagemInteira(PImage img, float x, float y, float w, float h) {

@@ -171,6 +171,49 @@ class SistemaFiltros {
     return produtosFiltrados(true);
   }
 
+  ArrayList<ProdutoFiltrado> produtosVisiveisParaVisualizacoes() {
+    ArrayList<ProdutoFiltrado> resultado = new ArrayList<ProdutoFiltrado>();
+    ArrayList<TagFiltro> tagsTipoProduto = tagsSelecionadasDaDimensao(DIM_TIPO_OBRA);
+    ArrayList<TagFiltro> tagsGerais = tagsSelecionadasExcetoTipoProduto();
+
+    for (ProdutoFiltrado produto : produtos) {
+      if (!produtoPossuiTodasAsRestricoesDeTipo(produto, tagsTipoProduto)) {
+        continue;
+      }
+      if (tagsGerais.size() == 0 || produtoPossuiAlgumaTag(produto, tagsGerais)) {
+        resultado.add(produto);
+      }
+    }
+
+    return resultado;
+  }
+
+  ArrayList<TagFiltro> tagsSelecionadasExcetoTipoProduto() {
+    ArrayList<TagFiltro> resultado = new ArrayList<TagFiltro>();
+    for (DimensaoFiltro dimensao : dimensoes) {
+      if (!dimensao.id.equals(DIM_TIPO_OBRA)) {
+        resultado.addAll(tagsSelecionadasDaDimensao(dimensao.id));
+      }
+    }
+    return resultado;
+  }
+
+  boolean produtoPossuiTodasAsRestricoesDeTipo(ProdutoFiltrado produto, ArrayList<TagFiltro> tagsTipoProduto) {
+    if (tagsTipoProduto.size() == 0) {
+      return true;
+    }
+    return produtoPossuiAlgumaTag(produto, tagsTipoProduto);
+  }
+
+  boolean produtoPossuiAlgumaTag(ProdutoFiltrado produto, ArrayList<TagFiltro> tags) {
+    for (TagFiltro tag : tags) {
+      if (produto.possuiTag(tag)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   ArrayList<ProdutoFiltrado> produtosFiltrados(boolean exigirTodasAsTagsNaDimensao) {
     ArrayList<ProdutoFiltrado> resultado = new ArrayList<ProdutoFiltrado>();
 
@@ -1401,7 +1444,7 @@ class FiltroInterface {
   void desenharCorpo() {
     noStroke();
     fill(COR_FUNDO);
-    rect(X, BODY_Y, BODY_W, BODY_H);
+    rect(X, BODY_Y, BODY_W, alturaCorpo());
 
     desenharBarraCategoria();
     desenharBarraBusca();
@@ -1469,7 +1512,7 @@ class FiltroInterface {
 
     noStroke();
     fill(COR_BRANCO);
-    rect(X, listaY - 6, BODY_W, max(0, min(height, BODY_Y + BODY_H) - listaY + 6));
+    rect(X, listaY - 6, BODY_W, max(0, limiteInferiorPainel() - listaY + 6));
 
     for (int i = 0; i < totalOpcoes; i++) {
       int yLinha = listaY + i * linhaH;
@@ -1501,7 +1544,7 @@ class FiltroInterface {
 
   void desenharListaTags() {
     ArrayList<TagFiltro> tags = tagsParaExibir();
-    int listaFim = min(height, BODY_Y + BODY_H);
+    int listaFim = limiteInferiorPainel();
     clip(X, TAG_LIST_Y, BODY_W, max(0, listaFim - TAG_LIST_Y));
 
     float yBase = TAG_LIST_Y - scrollTags;
@@ -1695,7 +1738,7 @@ class FiltroInterface {
   }
 
   boolean clicouTag(float mx, float my) {
-    if (my < TAG_LIST_Y || my > min(height, BODY_Y + BODY_H)) {
+    if (my < TAG_LIST_Y || my > limiteInferiorPainel()) {
       return false;
     }
 
@@ -1922,15 +1965,23 @@ class FiltroInterface {
   }
 
   boolean dentroDoPainel(float mx, float my) {
-    return mx >= X && mx <= X + BODY_W && my >= Y && my <= min(height, BODY_Y + BODY_H);
+    return mx >= X && mx <= X + BODY_W && my >= Y && my <= limiteInferiorPainel();
   }
 
   boolean dentroListaTags(float mx, float my) {
-    return mx >= X && mx <= X + BODY_W && my >= TAG_LIST_Y && my <= min(height, BODY_Y + BODY_H);
+    return mx >= X && mx <= X + BODY_W && my >= TAG_LIST_Y && my <= limiteInferiorPainel();
   }
 
   int alturaListaTagsVisivel() {
-    return max(0, min(height, BODY_Y + BODY_H) - TAG_LIST_Y);
+    return max(0, limiteInferiorPainel() - TAG_LIST_Y);
+  }
+
+  int alturaCorpo() {
+    return max(0, height - BODY_Y);
+  }
+
+  int limiteInferiorPainel() {
+    return height;
   }
 
   int maxScrollTags() {

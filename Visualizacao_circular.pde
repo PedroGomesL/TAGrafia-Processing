@@ -29,6 +29,13 @@ void visualizacaoCircularMouseReleased() {
   }
 }
 
+ArrayList<ProdutoFiltrado> produtosExibidosNaVisualizacaoCircular() {
+  if (visualizacaoCircular == null) {
+    return sistemaFiltros.produtosVisiveisParaVisualizacoes();
+  }
+  return visualizacaoCircular.produtosOriginaisExibidos();
+}
+
 class VisualizacaoCircular {
   SistemaFiltros filtros;
 
@@ -79,7 +86,7 @@ class VisualizacaoCircular {
     ArrayList<TagFiltro> tagsAtivas = tagsSelecionadas();
     ArrayList<TagFiltro> tagsTipoProduto = tagsDaDimensao(tagsAtivas, filtros.DIM_TIPO_OBRA);
     ArrayList<TagFiltro> tagsVisuais = tagsParaVisualizacao(tagsAtivas);
-    ArrayList<ProdutoVisual> produtos = produtosVisiveis(tagsVisuais, tagsTipoProduto);
+    ArrayList<ProdutoVisual> produtos = produtosExibidos(tagsVisuais, tagsTipoProduto);
     desenharCirculo(tagsVisuais, produtos);
     desenharTimeline();
     popStyle();
@@ -88,7 +95,7 @@ class VisualizacaoCircular {
   void desenharFundo() {
     noStroke();
     fill(temaEscuro ? #000000 : #FFFFFF);
-    rect(X, Y, W, H);
+    rect(X, Y, larguraVisual(), alturaVisual());
   }
 
   void desenharCirculo(ArrayList<TagFiltro> tags, ArrayList<ProdutoVisual> produtos) {
@@ -96,7 +103,7 @@ class VisualizacaoCircular {
 
     float cx = centroCirculoX();
     float cy = centroCirculoY();
-    float raio = CIRCLE_SIZE/2.0f;
+    float raio = raioCirculo();
 
     noFill();
     stroke(corCirculo());
@@ -262,7 +269,7 @@ class VisualizacaoCircular {
 
     noStroke();
     fill(temaEscuro ? #505050 : #D7D7D7);
-    rect(tx, ty + 40, TIMELINE_W, 60);
+    rect(tx, ty + 40, timelineW(), 60);
 
     float xInicio = xAno(anoInicio);
     float xFim = xAno(anoFim);
@@ -282,7 +289,7 @@ class VisualizacaoCircular {
     noStroke();
     fill(temaEscuro ? #505050 : #D7D7D7);
     rect(tx, ty + 40, max(0, faixaX - tx), 60);
-    rect(xFim, ty + 40, max(0, tx + TIMELINE_W - xFim), 60);
+    rect(xFim, ty + 40, max(0, tx + timelineW() - xFim), 60);
 
     noStroke();
     fill(#FFFFFF);
@@ -303,7 +310,7 @@ class VisualizacaoCircular {
     if (x < X + 48) {
       x += 40;
     }
-    if (x > X + W - 48) {
+    if (x > X + larguraVisual() - 48) {
       x -= 40;
     }
     text(str(ano), x, yTexto);
@@ -377,7 +384,7 @@ class VisualizacaoCircular {
   TagFiltro tagSobMouse(float mx, float my) {
     float cx = centroCirculoX();
     float cy = centroCirculoY();
-    float raio = CIRCLE_SIZE/2.0f * 0.72f;
+    float raio = raioCirculo() * 0.72f;
 
     for (TagFiltro tag : tagsParaVisualizacao(tagsSelecionadas())) {
       PVector pos = posicaoTag(tag, cx, cy, raio);
@@ -399,7 +406,7 @@ class VisualizacaoCircular {
   }
 
   boolean dentro(float mx, float my) {
-    return mx >= X && mx <= X + W && my >= Y && my <= Y + H;
+    return mx >= X && mx <= X + larguraVisual() && my >= Y && my <= Y + alturaVisual();
   }
 
   ArrayList<TagFiltro> tagsSelecionadas() {
@@ -495,6 +502,49 @@ class VisualizacaoCircular {
     return resultado;
   }
 
+  ArrayList<ProdutoVisual> produtosExibidos(ArrayList<TagFiltro> tagsVisuais, ArrayList<TagFiltro> tagsTipoProduto) {
+    atualizarDestaque(tagsVisuais);
+    return limitarProdutosAosSlots(produtosVisiveis(tagsVisuais, tagsTipoProduto));
+  }
+
+  ArrayList<ProdutoFiltrado> produtosOriginaisExibidos() {
+    ArrayList<TagFiltro> tagsAtivas = tagsSelecionadas();
+    ArrayList<TagFiltro> tagsTipoProduto = tagsDaDimensao(tagsAtivas, filtros.DIM_TIPO_OBRA);
+    ArrayList<TagFiltro> tagsVisuais = tagsParaVisualizacao(tagsAtivas);
+    ArrayList<ProdutoVisual> produtos = produtosExibidos(tagsVisuais, tagsTipoProduto);
+    ArrayList<ProdutoFiltrado> resultado = new ArrayList<ProdutoFiltrado>();
+
+    for (ProdutoVisual produto : produtos) {
+      resultado.add(produto.produtoOriginal);
+    }
+
+    return resultado;
+  }
+
+  ArrayList<ProdutoVisual> limitarProdutosAosSlots(ArrayList<ProdutoVisual> produtos) {
+    ArrayList<ProdutoVisual> resultado = new ArrayList<ProdutoVisual>();
+    int slot = 0;
+
+    for (ProdutoVisual produto : produtos) {
+      if (slot >= SLOTS_CIRCULO) {
+        break;
+      }
+
+      int segmentos = segmentosProduto(produto);
+      if (slot + segmentos > SLOTS_CIRCULO) {
+        segmentos = SLOTS_CIRCULO - slot;
+      }
+      if (segmentos <= 0) {
+        break;
+      }
+
+      resultado.add(produto);
+      slot += segmentos;
+    }
+
+    return resultado;
+  }
+
   boolean produtoPassaFiltroTipo(ProdutoFiltrado produto, ArrayList<TagFiltro> tagsTipoProduto) {
     if (tagsTipoProduto.size() == 0) {
       return true;
@@ -555,26 +605,44 @@ class VisualizacaoCircular {
 
   float xAno(int ano) {
     float tx = X + 4;
-    return tx + map(ano, ANO_MIN, ANO_MAX, 0, TIMELINE_W - TIMELINE_HANDLE_W);
+    return tx + map(ano, ANO_MIN, ANO_MAX, 0, timelineW() - TIMELINE_HANDLE_W);
   }
 
   float centroCirculoX() {
-    return X + W/2.0f;
+    return X + larguraVisual()/2.0f;
   }
 
   float centroCirculoY() {
-    return Y + (H - TIMELINE_H)/2.0f;
+    return Y + (alturaVisual() - TIMELINE_H)/2.0f;
   }
 
   float limiteInferiorVisual() {
-    return Y + H - TIMELINE_H;
+    return Y + alturaVisual() - TIMELINE_H;
   }
 
   int anoPorX(float x) {
     float tx = X + 4;
-    float fim = tx + TIMELINE_W - TIMELINE_HANDLE_W;
+    float fim = tx + timelineW() - TIMELINE_HANDLE_W;
     int ano = round(map(constrain(x, tx, fim), tx, fim, ANO_MIN, ANO_MAX) / 10.0f) * 10;
     return constrain(ano, ANO_MIN, ANO_MAX);
+  }
+
+  float larguraVisual() {
+    return larguraVisualLayout();
+  }
+
+  float timelineW() {
+    return larguraTimelineLayout();
+  }
+
+  float raioCirculo() {
+    float larguraDisponivel = max(220, larguraVisual() - 320);
+    float alturaDisponivel = max(260, alturaVisual() - TIMELINE_H - 80);
+    return min(CIRCLE_SIZE/2.0f, min(larguraDisponivel, alturaDisponivel) / 2.0f);
+  }
+
+  float alturaVisual() {
+    return height;
   }
 
   color corTag(TagFiltro tag) {

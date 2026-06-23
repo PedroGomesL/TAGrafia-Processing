@@ -45,25 +45,25 @@ class VisualizacaoLinhaTempo {
   void desenharFundo() {
     noStroke();
     fill(COR_FUNDO);
-    rect(X, Y, W, H);
+    rect(X, Y, larguraVisual(), alturaVisual());
   }
 
   void desenharEixoProdutos(ArrayList<ProdutoFiltrado> produtos) {
     float eixoY = centroEixoY();
     float x1 = X + 40;
-    float x2 = X + W - 40;
+    float x2 = X + larguraVisual() - 40;
     areasProdutos.clear();
 
     stroke(#FFFFFF);
     strokeWeight(3);
-    line(X, eixoY, X + W, eixoY);
+    line(X, eixoY, X + larguraVisual(), eixoY);
 
     if (produtos.size() == 0) {
       fill(#FFFFFF, 180);
       textFont(fonteTexto);
       textSize(16);
       textAlign(CENTER, CENTER);
-      text("Nenhum produto encontrado para os filtros atuais", X + W/2, eixoY - 42);
+      text("Nenhum produto encontrado para os filtros atuais", X + larguraVisual()/2, eixoY - 42);
       return;
     }
 
@@ -113,7 +113,7 @@ class VisualizacaoLinhaTempo {
 
   ArrayList<ProdutoFiltrado> produtosVisiveis() {
     ArrayList<ProdutoFiltrado> resultado = new ArrayList<ProdutoFiltrado>();
-    ArrayList<ProdutoFiltrado> produtos = filtros.produtosFiltrados(false);
+    ArrayList<ProdutoFiltrado> produtos = produtosExibidosNaVisualizacaoCircular();
 
     for (ProdutoFiltrado produto : produtos) {
       int ano = anoProduto(produto);
@@ -142,7 +142,7 @@ class VisualizacaoLinhaTempo {
 
     noStroke();
     fill(#505050);
-    rect(tx, ty + 40, TIMELINE_W, 60);
+    rect(tx, ty + 40, timelineW(), 60);
 
     float xInicio = xAno(anoInicio);
     float xFim = xAno(anoFim);
@@ -162,7 +162,7 @@ class VisualizacaoLinhaTempo {
     noStroke();
     fill(#505050);
     rect(tx, ty + 40, max(0, faixaX - tx), 60);
-    rect(xFim, ty + 40, max(0, tx + TIMELINE_W - xFim), 60);
+    rect(xFim, ty + 40, max(0, tx + timelineW() - xFim), 60);
 
     fill(#FFFFFF);
     rect(xInicio, ty + 10, TIMELINE_HANDLE_W, TIMELINE_HANDLE_H);
@@ -182,7 +182,7 @@ class VisualizacaoLinhaTempo {
     if (x < X + 48) {
       x += 40;
     }
-    if (x > X + W - 48) {
+    if (x > X + larguraVisual() - 48) {
       x -= 40;
     }
     text(str(ano), x, yTexto);
@@ -286,26 +286,38 @@ class VisualizacaoLinhaTempo {
 
   float xAno(int ano) {
     float tx = X + 4;
-    return tx + map(ano, ANO_MIN, ANO_MAX, 0, TIMELINE_W - TIMELINE_HANDLE_W);
+    return tx + map(ano, ANO_MIN, ANO_MAX, 0, timelineW() - TIMELINE_HANDLE_W);
   }
 
   int anoPorX(float x) {
     float tx = X + 4;
-    float fim = tx + TIMELINE_W - TIMELINE_HANDLE_W;
+    float fim = tx + timelineW() - TIMELINE_HANDLE_W;
     int ano = round(map(constrain(x, tx, fim), tx, fim, ANO_MIN, ANO_MAX) / 10.0f) * 10;
     return constrain(ano, ANO_MIN, ANO_MAX);
   }
 
   float centroEixoY() {
-    return Y + (min(height, H) - TIMELINE_H) * 0.50f;
+    return Y + (alturaVisual() - TIMELINE_H) * 0.50f;
   }
 
   float limiteInferiorVisual() {
-    return Y + min(height, H) - TIMELINE_H;
+    return Y + alturaVisual() - TIMELINE_H;
   }
 
   boolean dentro(float mx, float my) {
-    return mx >= X && mx <= X + W && my >= Y && my <= Y + H;
+    return mx >= X && mx <= X + larguraVisual() && my >= Y && my <= Y + alturaVisual();
+  }
+
+  float larguraVisual() {
+    return larguraVisualLayout();
+  }
+
+  float alturaVisual() {
+    return height;
+  }
+
+  float timelineW() {
+    return larguraTimelineLayout();
   }
 }
 
