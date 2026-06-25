@@ -71,7 +71,7 @@ class SistemaFiltros {
     carregarProdutosDeArquivo("Produtos internacionais.tsv", "internacional");
     carregarProdutosDeArquivo("Produtos brasileiros.tsv", "brasileiro");
 
-    ordenarTagsSemAgrupamento();
+    ordenarTaxonomiaAlfabeticamente();
   }
 
   void carregarProdutosDeArquivo(String arquivo, String origem) {
@@ -1084,12 +1084,34 @@ class SistemaFiltros {
     }
   }
 
-  void ordenarTagsSemAgrupamento() {
+  void ordenarTaxonomiaAlfabeticamente() {
     for (DimensaoFiltro dimensao : dimensoes) {
-      if (dimensao.semAgrupamento != null) {
-        dimensao.semAgrupamento.ordenarTagsPorRotulo();
+      Collections.sort(dimensao.categorias, new Comparator<CategoriaFiltro>() {
+        public int compare(CategoriaFiltro a, CategoriaFiltro b) {
+          return compararTextoOrdenacao(a.rotulo, b.rotulo);
+        }
+      });
+
+      for (CategoriaFiltro categoria : dimensao.categorias) {
+        ordenarTagsDaCategoria(categoria);
       }
     }
+  }
+
+  void ordenarTagsDaCategoria(CategoriaFiltro categoria) {
+    Collections.sort(categoria.tags, new Comparator<TagFiltro>() {
+      public int compare(TagFiltro a, TagFiltro b) {
+        return compararTextoOrdenacao(a.rotulo, b.rotulo);
+      }
+    });
+  }
+
+  int compararTextoOrdenacao(String a, String b) {
+    int comparacao = normalizarBusca(a).compareToIgnoreCase(normalizarBusca(b));
+    if (comparacao != 0) {
+      return comparacao;
+    }
+    return limparTexto(a).compareToIgnoreCase(limparTexto(b));
   }
 
   int indiceColuna(Table tabela, String nome, int fallback) {
@@ -1336,7 +1358,9 @@ class FiltroInterface {
   final int SCROLL_X = 8;
   final int SCROLL_W = 5;
   final int SCROLL_MIN_THUMB_H = 34;
+  final int INDICE_TAGS_DISPONIVEIS = -2;
   final int INDICE_TODAS_TAGS = -1;
+  final String ROTULO_TAGS_DISPONIVEIS = "Tags disponiveis";
   final String ROTULO_TODAS_TAGS = "Tags ativas";
 
   final color COR_AMARELO = #FFCB00;
@@ -1369,7 +1393,7 @@ class FiltroInterface {
 
   FiltroInterface(SistemaFiltros filtros) {
     this.filtros = filtros;
-    this.dimensaoAtivaId = filtros.DIM_MATERIAL;
+    this.dimensaoAtivaId = filtros.DIM_TIPO_OBRA;
   }
 
   void carregarAssets() {
@@ -1446,7 +1470,9 @@ class FiltroInterface {
     fill(COR_FUNDO);
     rect(X, BODY_Y, BODY_W, alturaCorpo());
 
-    desenharBarraCategoria();
+    if (!dimensaoAtivaEhTipoProduto()) {
+      desenharBarraCategoria();
+    }
     desenharBarraBusca();
     desenharBotaoLimparTags();
     if (seletorCategoriasAberto) {
@@ -1471,9 +1497,10 @@ class FiltroInterface {
   }
 
   void desenharBarraBusca() {
+    int y = yBarraBusca();
     noStroke();
     fill(COR_BRANCO);
-    rect(X + CATEGORY_BAR_X, SEARCH_BAR_Y, CATEGORY_BAR_W, SEARCH_BAR_H, SEARCH_BAR_H/2);
+    rect(X + CATEGORY_BAR_X, y, CATEGORY_BAR_W, SEARCH_BAR_H, SEARCH_BAR_H/2);
 
     textFont(fonteTexto);
     textSize(14);
@@ -1481,34 +1508,35 @@ class FiltroInterface {
     fill(textoBusca.length() == 0 ? color(90) : COR_PRETO);
 
     String texto = textoBusca.length() == 0 ? "Pesquisar" : textoBusca;
-    text(texto, X + CATEGORY_BAR_X + 13, SEARCH_BAR_Y + SEARCH_BAR_H/2 - 1);
+    text(texto, X + CATEGORY_BAR_X + 13, y + SEARCH_BAR_H/2 - 1);
 
     if (buscaAtiva && frameCount % 60 < 30) {
       float cursorX = X + CATEGORY_BAR_X + 13 + textWidth(textoBusca);
       stroke(COR_PRETO);
       strokeWeight(1);
-      line(cursorX + 2, SEARCH_BAR_Y + 8, cursorX + 2, SEARCH_BAR_Y + SEARCH_BAR_H - 8);
+      line(cursorX + 2, y + 8, cursorX + 2, y + SEARCH_BAR_H - 8);
     }
   }
 
   void desenharBotaoLimparTags() {
+    int y = yBotaoLimparTags();
     boolean ativo = filtros.tagsSelecionadas.size() > 0;
     noStroke();
     fill(ativo ? COR_BRANCO : color(105));
-    rect(X + CATEGORY_BAR_X, CLEAR_BUTTON_Y, CATEGORY_BAR_W, CLEAR_BUTTON_H, CLEAR_BUTTON_H/2);
+    rect(X + CATEGORY_BAR_X, y, CATEGORY_BAR_W, CLEAR_BUTTON_H, CLEAR_BUTTON_H/2);
 
     if (iconeLimparFiltro != null) {
       tint(COR_PRETO, ativo ? 255 : 120);
-      desenharImagemCentralizada(iconeLimparFiltro, X + CATEGORY_BAR_X + CATEGORY_BAR_W/2, CLEAR_BUTTON_Y + CLEAR_BUTTON_H/2, 22, 22);
+      desenharImagemCentralizada(iconeLimparFiltro, X + CATEGORY_BAR_X + CATEGORY_BAR_W/2, y + CLEAR_BUTTON_H/2, 22, 22);
       noTint();
     }
   }
 
   void desenharSeletorCategorias() {
     ArrayList<CategoriaFiltro> categorias = categoriasVisiveisDaDimensao();
-    int listaY = CLEAR_BUTTON_Y + CLEAR_BUTTON_H + 12;
+    int listaY = yListaCategorias();
     int linhaH = 34;
-    int totalOpcoes = categorias.size() + 1;
+    int totalOpcoes = totalOpcoesCategoria(categorias);
 
     noStroke();
     fill(COR_BRANCO);
@@ -1520,8 +1548,8 @@ class FiltroInterface {
         break;
       }
 
-      int indiceCategoria = i == 0 ? INDICE_TODAS_TAGS : i - 1;
-      String rotuloOpcao = i == 0 ? ROTULO_TODAS_TAGS : categorias.get(i - 1).rotulo;
+      int indiceCategoria = indiceCategoriaDaOpcao(i);
+      String rotuloOpcao = rotuloCategoriaDaOpcao(i, categorias);
       boolean ativa = indiceCategoria == indiceCategoriaAtiva();
       noStroke();
       if (ativa) {
@@ -1545,12 +1573,13 @@ class FiltroInterface {
   void desenharListaTags() {
     ArrayList<TagFiltro> tags = tagsParaExibir();
     int listaFim = limiteInferiorPainel();
-    clip(X, TAG_LIST_Y, BODY_W, max(0, listaFim - TAG_LIST_Y));
+    int listaY = yListaTags();
+    clip(X, listaY, BODY_W, max(0, listaFim - listaY));
 
-    float yBase = TAG_LIST_Y - scrollTags;
+    float yBase = listaY - scrollTags;
     for (int i = 0; i < tags.size(); i++) {
       float yLinha = yBase + i * TAG_ROW_H;
-      if (yLinha + TAG_ROW_H < TAG_LIST_Y || yLinha > listaFim) {
+      if (yLinha + TAG_ROW_H < listaY || yLinha > listaFim) {
         continue;
       }
 
@@ -1573,7 +1602,7 @@ class FiltroInterface {
     }
 
     float trackX = X + SCROLL_X;
-    float trackY = TAG_LIST_Y;
+    float trackY = yListaTags();
     float trackH = alturaListaTagsVisivel();
     float thumbH = alturaThumbTags(totalTags);
     float thumbY = yThumbTags(totalTags);
@@ -1623,7 +1652,11 @@ class FiltroInterface {
     }
 
     if (clicouBotaoLimparTags(mx, my)) {
+      boolean tinhaTipoSelecionado = tipoProdutoLimitandoTags();
       filtros.limparSelecao();
+      if (tinhaTipoSelecionado) {
+        resetarCategoriasDependentesDoTipo();
+      }
       textoBusca = "";
       scrollTags = 0;
       buscaAtiva = false;
@@ -1679,30 +1712,35 @@ class FiltroInterface {
   }
 
   boolean clicouBarraCategoria(float mx, float my) {
+    if (dimensaoAtivaEhTipoProduto()) {
+      return false;
+    }
     return mx >= X + CATEGORY_BAR_X && mx <= X + CATEGORY_BAR_X + CATEGORY_BAR_W &&
       my >= CATEGORY_BAR_Y && my <= CATEGORY_BAR_Y + CATEGORY_BAR_H;
   }
 
   boolean clicouBarraBusca(float mx, float my) {
+    int y = yBarraBusca();
     return mx >= X + CATEGORY_BAR_X && mx <= X + CATEGORY_BAR_X + CATEGORY_BAR_W &&
-      my >= SEARCH_BAR_Y && my <= SEARCH_BAR_Y + SEARCH_BAR_H;
+      my >= y && my <= y + SEARCH_BAR_H;
   }
 
   boolean clicouBotaoLimparTags(float mx, float my) {
+    int y = yBotaoLimparTags();
     return mx >= X + CATEGORY_BAR_X && mx <= X + CATEGORY_BAR_X + CATEGORY_BAR_W &&
-      my >= CLEAR_BUTTON_Y && my <= CLEAR_BUTTON_Y + CLEAR_BUTTON_H;
+      my >= y && my <= y + CLEAR_BUTTON_H;
   }
 
   boolean clicouOpcaoCategoria(float mx, float my) {
     ArrayList<CategoriaFiltro> categorias = categoriasVisiveisDaDimensao();
-    int listaY = CLEAR_BUTTON_Y + CLEAR_BUTTON_H + 12;
+    int listaY = yListaCategorias();
     int linhaH = 34;
 
-    int totalOpcoes = categorias.size() + 1;
+    int totalOpcoes = totalOpcoesCategoria(categorias);
     for (int i = 0; i < totalOpcoes; i++) {
       int yLinha = listaY + i * linhaH;
       if (mx >= X + 16 && mx <= X + BODY_W - 16 && my >= yLinha && my <= yLinha + linhaH - 4) {
-        categoriaAtivaPorDimensao.put(dimensaoAtivaId, i == 0 ? INDICE_TODAS_TAGS : i - 1);
+        categoriaAtivaPorDimensao.put(dimensaoAtivaId, indiceCategoriaDaOpcao(i));
         scrollTags = 0;
         seletorCategoriasAberto = false;
         return true;
@@ -1738,18 +1776,22 @@ class FiltroInterface {
   }
 
   boolean clicouTag(float mx, float my) {
-    if (my < TAG_LIST_Y || my > limiteInferiorPainel()) {
+    int listaY = yListaTags();
+    if (my < listaY || my > limiteInferiorPainel()) {
       return false;
     }
 
     ArrayList<TagFiltro> tags = tagsParaExibir();
-    int indice = floor((my - TAG_LIST_Y + scrollTags) / TAG_ROW_H);
+    int indice = floor((my - listaY + scrollTags) / TAG_ROW_H);
     if (indice < 0 || indice >= tags.size()) {
       return false;
     }
 
     TagFiltro tag = tags.get(indice);
     filtros.alternarTag(tag.dimensao.id, tag.rotulo);
+    if (tag.dimensao.id.equals(filtros.DIM_TIPO_OBRA)) {
+      resetarCategoriasDependentesDoTipo();
+    }
     return true;
   }
 
@@ -1782,7 +1824,7 @@ class FiltroInterface {
       return;
     }
 
-    float trackY = TAG_LIST_Y;
+    float trackY = yListaTags();
     float trackH = alturaListaTagsVisivel();
     float thumbH = alturaThumbTags(totalTags);
     float maxThumbY = max(1, trackH - thumbH);
@@ -1829,6 +1871,9 @@ class FiltroInterface {
     if (!categoriaAtivaPorDimensao.containsKey(dimensaoId)) {
       categoriaAtivaPorDimensao.put(dimensaoId, 0);
     }
+    if (dimensaoAtivaEhTipoProduto()) {
+      categoriaAtivaPorDimensao.put(dimensaoId, INDICE_TODAS_TAGS);
+    }
     seletorCategoriasAberto = false;
     buscaAtiva = false;
     scrollTagsArrastando = false;
@@ -1842,7 +1887,7 @@ class FiltroInterface {
       return null;
     }
 
-    if (indiceCategoriaAtiva() == INDICE_TODAS_TAGS) {
+    if (indiceCategoriaAtiva() < 0) {
       return null;
     }
 
@@ -1851,10 +1896,10 @@ class FiltroInterface {
   }
 
   String rotuloCategoriaAtiva() {
+    if (indiceCategoriaAtiva() == INDICE_TAGS_DISPONIVEIS) {
+      return ROTULO_TAGS_DISPONIVEIS;
+    }
     if (indiceCategoriaAtiva() == INDICE_TODAS_TAGS) {
-      if (tipoProdutoLimitandoTags() && !dimensaoAtivaId.equals(filtros.DIM_TIPO_OBRA)) {
-        return "Tags do tipo";
-      }
       return ROTULO_TODAS_TAGS;
     }
 
@@ -1867,12 +1912,70 @@ class FiltroInterface {
     return indice == null ? 0 : indice;
   }
 
+  boolean mostraOpcaoTagsDisponiveis() {
+    return tipoProdutoLimitandoTags() && !dimensaoAtivaEhTipoProduto();
+  }
+
+  int totalOpcoesCategoria(ArrayList<CategoriaFiltro> categorias) {
+    return categorias.size() + (mostraOpcaoTagsDisponiveis() ? 2 : 1);
+  }
+
+  int indiceCategoriaDaOpcao(int indiceOpcao) {
+    if (mostraOpcaoTagsDisponiveis()) {
+      if (indiceOpcao == 0) {
+        return INDICE_TAGS_DISPONIVEIS;
+      }
+      if (indiceOpcao == 1) {
+        return INDICE_TODAS_TAGS;
+      }
+      return indiceOpcao - 2;
+    }
+
+    return indiceOpcao == 0 ? INDICE_TODAS_TAGS : indiceOpcao - 1;
+  }
+
+  String rotuloCategoriaDaOpcao(int indiceOpcao, ArrayList<CategoriaFiltro> categorias) {
+    int indiceCategoria = indiceCategoriaDaOpcao(indiceOpcao);
+    if (indiceCategoria == INDICE_TAGS_DISPONIVEIS) {
+      return ROTULO_TAGS_DISPONIVEIS;
+    }
+    if (indiceCategoria == INDICE_TODAS_TAGS) {
+      return ROTULO_TODAS_TAGS;
+    }
+    return categorias.get(indiceCategoria).rotulo;
+  }
+
+  int yBarraBusca() {
+    return dimensaoAtivaEhTipoProduto() ? CATEGORY_BAR_Y : SEARCH_BAR_Y;
+  }
+
+  int yBotaoLimparTags() {
+    return yBarraBusca() + SEARCH_BAR_H + 10;
+  }
+
+  int yListaCategorias() {
+    return yBotaoLimparTags() + CLEAR_BUTTON_H + 12;
+  }
+
+  int yListaTags() {
+    return yBotaoLimparTags() + CLEAR_BUTTON_H + 16;
+  }
+
   ArrayList<CategoriaFiltro> categoriasVisiveisDaDimensao() {
     ArrayList<CategoriaFiltro> resultado = new ArrayList<CategoriaFiltro>();
+    if (dimensaoAtivaEhTipoProduto()) {
+      return resultado;
+    }
+
     ArrayList<CategoriaFiltro> categorias = filtros.categoriasDaDimensao(dimensaoAtivaId);
+    boolean filtrarPorTipo = tipoProdutoLimitandoTags() && !dimensaoAtivaId.equals(filtros.DIM_TIPO_OBRA);
+    HashSet<String> chavesPermitidas = filtrarPorTipo ? chavesTagsDoTipoSelecionado(dimensaoAtivaId) : null;
 
     for (CategoriaFiltro categoria : categorias) {
       if (categoria.rotulo.equals("Sem agrupamento") && categoria.tags.size() == 0) {
+        continue;
+      }
+      if (filtrarPorTipo && !categoriaTemTagsPermitidas(categoria, chavesPermitidas)) {
         continue;
       }
       resultado.add(categoria);
@@ -1881,11 +1984,24 @@ class FiltroInterface {
     return resultado;
   }
 
+  boolean categoriaTemTagsPermitidas(CategoriaFiltro categoria, HashSet<String> chavesPermitidas) {
+    if (categoria == null || chavesPermitidas == null) {
+      return false;
+    }
+
+    for (TagFiltro tag : categoria.tags) {
+      if (chavesPermitidas.contains(tag.chave())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   ArrayList<TagFiltro> tagsParaExibir() {
     String busca = filtros.normalizarBusca(textoBusca);
     if (busca.length() > 0) {
       ArrayList<TagFiltro> resultado = new ArrayList<TagFiltro>();
-      ArrayList<TagFiltro> tags = tagsDisponiveisNoContexto();
+      ArrayList<TagFiltro> tags = tagsBaseParaBusca();
 
       for (TagFiltro tag : tags) {
         if (filtros.normalizarBusca(tag.rotulo).indexOf(busca) >= 0) {
@@ -1896,16 +2012,43 @@ class FiltroInterface {
       return resultado;
     }
 
+    if (dimensaoAtivaEhTipoProduto()) {
+      return tagsTipoProdutoOrdenadasPorQuantidade();
+    }
+
+    if (indiceCategoriaAtiva() == INDICE_TAGS_DISPONIVEIS) {
+      return tagsDisponiveisNoContexto();
+    }
+    if (indiceCategoriaAtiva() == INDICE_TODAS_TAGS) {
+      return filtros.tagsSelecionadasDaDimensao(dimensaoAtivaId);
+    }
+
     CategoriaFiltro categoria = categoriaAtiva();
     if (categoria == null) {
-      ArrayList<TagFiltro> tagsContexto = tagsDisponiveisNoContexto();
-      if (tipoProdutoLimitandoTags() && !dimensaoAtivaId.equals(filtros.DIM_TIPO_OBRA)) {
-        return tagsContexto;
-      }
-      return filtros.tagsSelecionadasDaDimensao(dimensaoAtivaId);
+      return new ArrayList<TagFiltro>();
     }
     ArrayList<TagFiltro> tags = filtros.tagsDaCategoria(categoria, false);
     return filtrarTagsPorContexto(tags);
+  }
+
+  ArrayList<TagFiltro> tagsBaseParaBusca() {
+    if (dimensaoAtivaEhTipoProduto()) {
+      return tagsTipoProdutoOrdenadasPorQuantidade();
+    }
+    return tagsDisponiveisNoContexto();
+  }
+
+  ArrayList<TagFiltro> tagsTipoProdutoOrdenadasPorQuantidade() {
+    ArrayList<TagFiltro> tags = filtros.tagsDisponiveis(filtros.DIM_TIPO_OBRA, true);
+    Collections.sort(tags, new Comparator<TagFiltro>() {
+      public int compare(TagFiltro a, TagFiltro b) {
+        if (a.ocorrencias != b.ocorrencias) {
+          return b.ocorrencias - a.ocorrencias;
+        }
+        return filtros.compararTextoOrdenacao(a.rotulo, b.rotulo);
+      }
+    });
+    return tags;
   }
 
   ArrayList<TagFiltro> tagsDisponiveisNoContexto() {
@@ -1929,6 +2072,18 @@ class FiltroInterface {
 
   boolean tipoProdutoLimitandoTags() {
     return filtros.tagsSelecionadasDaDimensao(filtros.DIM_TIPO_OBRA).size() > 0;
+  }
+
+  boolean dimensaoAtivaEhTipoProduto() {
+    return dimensaoAtivaId.equals(filtros.DIM_TIPO_OBRA);
+  }
+
+  void resetarCategoriasDependentesDoTipo() {
+    int indiceInicial = tipoProdutoLimitandoTags() ? INDICE_TAGS_DISPONIVEIS : INDICE_TODAS_TAGS;
+    categoriaAtivaPorDimensao.put(filtros.DIM_MATERIAL, indiceInicial);
+    categoriaAtivaPorDimensao.put(filtros.DIM_TECNICAS, indiceInicial);
+    categoriaAtivaPorDimensao.put(filtros.DIM_ESTETICO, indiceInicial);
+    scrollTags = 0;
   }
 
   HashSet<String> chavesTagsDoTipoSelecionado(String dimensaoId) {
@@ -1969,11 +2124,11 @@ class FiltroInterface {
   }
 
   boolean dentroListaTags(float mx, float my) {
-    return mx >= X && mx <= X + BODY_W && my >= TAG_LIST_Y && my <= limiteInferiorPainel();
+    return mx >= X && mx <= X + BODY_W && my >= yListaTags() && my <= limiteInferiorPainel();
   }
 
   int alturaListaTagsVisivel() {
-    return max(0, limiteInferiorPainel() - TAG_LIST_Y);
+    return max(0, limiteInferiorPainel() - yListaTags());
   }
 
   int alturaCorpo() {
@@ -1999,7 +2154,7 @@ class FiltroInterface {
   }
 
   float yThumbTags(int totalTags) {
-    float trackY = TAG_LIST_Y;
+    float trackY = yListaTags();
     float trackH = alturaListaTagsVisivel();
     float thumbH = alturaThumbTags(totalTags);
     float maxThumbY = max(1, trackH - thumbH);

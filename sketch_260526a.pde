@@ -9,9 +9,31 @@ final int LAYOUT_VISUAL_W_MIN = 320;
 final int LAYOUT_PAINEL_PRODUTO_W_MIN = 300;
 
 float escalaLayout() {
-  float espacoSemFiltro = max(1, width - LAYOUT_FILTRO_W);
+  float espacoSemFiltro = max(1, espacoConteudoLayout());
   float larguraDesejada = LAYOUT_VISUAL_W_BASE + LAYOUT_PAINEL_PRODUTO_W;
   return min(1.0f, espacoSemFiltro / larguraDesejada);
+}
+
+float espacoConteudoLayout() {
+  return max(0, width - LAYOUT_FILTRO_W);
+}
+
+float larguraVisualMinimaLayout() {
+  float espaco = espacoConteudoLayout();
+  float minimoCombinado = LAYOUT_VISUAL_W_MIN + LAYOUT_PAINEL_PRODUTO_W_MIN;
+  if (espaco < minimoCombinado) {
+    return constrain(espaco * 0.52f, 180, LAYOUT_VISUAL_W_MIN);
+  }
+  return LAYOUT_VISUAL_W_MIN;
+}
+
+float larguraPainelProdutoMinimaLayout() {
+  float espaco = espacoConteudoLayout();
+  float minimoCombinado = LAYOUT_VISUAL_W_MIN + LAYOUT_PAINEL_PRODUTO_W_MIN;
+  if (espaco < minimoCombinado) {
+    return constrain(espaco - larguraVisualMinimaLayout(), 160, LAYOUT_PAINEL_PRODUTO_W_MIN);
+  }
+  return LAYOUT_PAINEL_PRODUTO_W_MIN;
 }
 
 float xPainelProdutoLayout() {
@@ -19,13 +41,16 @@ float xPainelProdutoLayout() {
 }
 
 float larguraVisualLayout() {
-  return max(LAYOUT_VISUAL_W_MIN, width - LAYOUT_FILTRO_W - larguraPainelProdutoLayout());
+  return max(0, espacoConteudoLayout() - larguraPainelProdutoLayout());
 }
 
 float larguraPainelProdutoLayout() {
+  float espaco = espacoConteudoLayout();
+  float larguraVisualMinima = larguraVisualMinimaLayout();
   float larguraEscalada = LAYOUT_PAINEL_PRODUTO_W * escalaLayout();
-  float larguraMaxima = max(LAYOUT_PAINEL_PRODUTO_W_MIN, width - LAYOUT_FILTRO_W - LAYOUT_VISUAL_W_MIN);
-  return constrain(larguraEscalada, LAYOUT_PAINEL_PRODUTO_W_MIN, larguraMaxima);
+  float larguraMinima = min(larguraPainelProdutoMinimaLayout(), max(0, espaco - larguraVisualMinima));
+  float larguraMaxima = max(larguraMinima, espaco - larguraVisualMinima);
+  return constrain(larguraEscalada, larguraMinima, larguraMaxima);
 }
 
 float direitaVisualLayout() {
@@ -33,7 +58,7 @@ float direitaVisualLayout() {
 }
 
 float larguraTimelineLayout() {
-  return max(220, larguraVisualLayout() - 8);
+  return max(0, larguraVisualLayout() - 8);
 }
 
 void settings() {
@@ -55,11 +80,15 @@ void draw() {
   background(240);
   desenharVisualizacaoAtual();
   desenharPainelProduto();
+  desenharBotaoTemaClaroPrototipo();
   desenharFiltroUI();
 }
 
 void mousePressed() {
   if (mouseButton == LEFT && filtroMousePressed()) {
+    return;
+  }
+  if (mouseButton == LEFT && temaClaroPrototipoMousePressed(mouseX, mouseY)) {
     return;
   }
   if (mouseButton == LEFT && painelProdutoMousePressed()) {

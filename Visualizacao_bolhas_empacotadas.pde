@@ -7,7 +7,10 @@ PFont fonteExportarTitulo;
 PFont fonteExportarOpcao;
 PFont fonteExportarTexto;
 PImage iconeExportar;
+PImage iconeTrocarVisualizacao;
+PImage iconeDetalhesVisualizacao;
 boolean painelExportacaoAberto = false;
+boolean painelDetalhesVisualizacaoAberto = false;
 boolean exportarCircular = true;
 boolean exportarBolhas = true;
 boolean exportarLinhaTempo = true;
@@ -21,11 +24,16 @@ void inicializarVisualizacoes() {
   inicializarVisualizacaoCircular();
   inicializarVisualizacaoBolhasEmpacotadas();
   inicializarVisualizacaoLinhaTempo();
-  fonteBotaoVisualizacao = createFont("Afacad Flux Bold", 10, true);
-  fonteExportarTitulo = createFont("Afacad Flux Bold", 34, true);
-  fonteExportarOpcao = createFont("Afacad Flux Regular", 37, true);
-  fonteExportarTexto = createFont("Roboto Condensed", 16, true);
+  fonteBotaoVisualizacao = createFont("Afacad Flux Bold", 13, true);
+  fonteExportarTitulo = createFont("Afacad Flux Bold", 22, true);
+  fonteExportarOpcao = createFont("Afacad Flux Regular", 22, true);
+  fonteExportarTexto = createFont("Roboto Condensed", 11, true);
   iconeExportar = loadImage("Icones/export.png");
+  iconeTrocarVisualizacao = loadImage("Icones/change.png");
+  if (iconeTrocarVisualizacao == null) {
+    iconeTrocarVisualizacao = loadImage("Icones/change-2.png");
+  }
+  iconeDetalhesVisualizacao = loadImage("Icones/detalhes.png");
 }
 
 void inicializarVisualizacaoBolhasEmpacotadas() {
@@ -42,6 +50,8 @@ void desenharVisualizacaoAtual() {
   desenharVisualizacaoPorId(visualizacaoAtiva);
   desenharBotaoExportar();
   desenharBotaoAlternarVisualizacao();
+  desenharBotaoDetalhesVisualizacao();
+  desenharPainelDetalhesVisualizacao();
   desenharPainelExportacao();
 }
 
@@ -68,6 +78,10 @@ void desenharVisualizacaoLinhaTempo() {
 }
 
 boolean visualizacaoAtualMousePressed() {
+  if (detalhesVisualizacaoMousePressed(mouseX, mouseY)) {
+    return true;
+  }
+
   if (exportacaoMousePressed(mouseX, mouseY)) {
     return true;
   }
@@ -112,81 +126,214 @@ void visualizacaoAtualMouseReleased() {
 void desenharBotaoAlternarVisualizacao() {
   float bx = botaoVisualizacaoX();
   float by = botaoVisualizacaoY();
-  float bw = 44;
-  float bh = 28;
+  float bw = botaoVisualizacaoW();
+  float bh = botaoVisualizacaoH();
 
   pushStyle();
-  stroke(#FFFFFF);
+  stroke(temaCorLinhaVisualPrototipo());
   strokeWeight(1.5f);
   fill(#151515, 220);
   rect(bx, by, bw, bh, 7);
 
-  noStroke();
-  fill(visualizacaoAtiva == VISAO_BOLHAS ? #FF00FB : #D9D9D9);
-  ellipse(bx + 15, by + 14, 12, 12);
-  fill(#FFCB00);
-  ellipse(bx + 27, by + 13, 8, 8);
+  if (iconeTrocarVisualizacao != null) {
+    image(iconeTrocarVisualizacao, bx + 7, by + 5, 18, 18);
+  } else {
+    desenharIconeTrocarVisualizacaoVetorial(bx + 16, by + bh/2);
+  }
+
   fill(#FFFFFF);
+  noStroke();
   textFont(fonteBotaoVisualizacao);
-  textAlign(CENTER, CENTER);
-  text(rotuloProximaVisualizacao(), bx + 36, by + 14);
+  textSize(13);
+  textAlign(LEFT, CENTER);
+  text(rotuloVisualizacaoAtual(), bx + 31, by + bh/2 - 1);
   popStyle();
 }
 
-String rotuloProximaVisualizacao() {
+void desenharIconeTrocarVisualizacaoVetorial(float cx, float cy) {
+  noFill();
+  stroke(temaCorLinhaVisualPrototipo());
+  strokeWeight(1.8f);
+  arc(cx, cy, 15, 15, -PI * 0.18f, PI * 1.08f);
+  line(cx + 7, cy - 5, cx + 10, cy - 9);
+  line(cx + 7, cy - 5, cx + 3, cy - 8);
+}
+
+String rotuloVisualizacaoAtual() {
   if (visualizacaoAtiva == VISAO_CIRCULAR) {
-    return "B";
+    return "Circular";
   }
   if (visualizacaoAtiva == VISAO_BOLHAS) {
-    return "T";
+    return "Bolhas";
   }
-  return "C";
+  return "Tempo";
 }
 
 boolean clicouBotaoAlternarVisualizacao(float mx, float my) {
   float bx = botaoVisualizacaoX();
   float by = botaoVisualizacaoY();
-  return mx >= bx && mx <= bx + 44 && my >= by && my <= by + 28;
+  return mx >= bx && mx <= bx + botaoVisualizacaoW() && my >= by && my <= by + botaoVisualizacaoH();
 }
 
 float botaoVisualizacaoX() {
-  return direitaVisualLayout() - 58;
+  return direitaVisualLayout() - botaoVisualizacaoW() - 16;
 }
 
 float botaoVisualizacaoY() {
   return 16;
 }
 
+float botaoVisualizacaoW() {
+  return 112;
+}
+
+float botaoVisualizacaoH() {
+  return 28;
+}
+
+void desenharBotaoDetalhesVisualizacao() {
+  float cx = botaoDetalhesVisualizacaoCentroX();
+  float cy = botaoDetalhesVisualizacaoCentroY();
+  float d = botaoDetalhesVisualizacaoD();
+
+  pushStyle();
+  if (iconeDetalhesVisualizacao != null) {
+    tint(temaCorLinhaVisualPrototipo());
+    image(iconeDetalhesVisualizacao, cx - d/2, cy - d/2, d, d);
+    noTint();
+  } else {
+    desenharIconeDetalhesVisualizacaoVetorial(cx, cy, d);
+  }
+  popStyle();
+}
+
+void desenharIconeDetalhesVisualizacaoVetorial(float cx, float cy, float d) {
+  noFill();
+  stroke(temaCorLinhaVisualPrototipo());
+  strokeWeight(1.7f);
+  ellipse(cx, cy, d * 0.9f, d * 0.9f);
+  line(cx, cy - d * 0.05f, cx, cy + d * 0.25f);
+  point(cx, cy - d * 0.25f);
+}
+
+void desenharPainelDetalhesVisualizacao() {
+  if (!painelDetalhesVisualizacaoAberto) {
+    return;
+  }
+
+  float px = painelDetalhesVisualizacaoX();
+  float py = painelDetalhesVisualizacaoY();
+  float pw = painelDetalhesVisualizacaoW();
+  float ph = painelDetalhesVisualizacaoH();
+
+  pushStyle();
+  noStroke();
+  fill(#222222, 248);
+  rect(px, py, pw, ph);
+
+  fill(#FFFFFF);
+  textFont(fonteExportarTitulo);
+  textSize(16);
+  textAlign(LEFT, TOP);
+  text("Legenda", px + 14, py + 12);
+
+  float y = py + 45;
+  desenharLinhaLegendaVisualizacao(px + 22, y, #FFCB00, "Obra brasileira");
+  desenharLinhaLegendaVisualizacao(px + 22, y + 28, #FF00FB, "Obra internacional");
+  desenharLinhaLegendaVisualizacao(px + 22, y + 56, #3E4AD3, "Material");
+  desenharLinhaLegendaVisualizacao(px + 22, y + 84, #4AD33E, "Tecnicas de construcao");
+  desenharLinhaLegendaVisualizacao(px + 22, y + 112, #D33E4A, "Estetico");
+  popStyle();
+}
+
+void desenharLinhaLegendaVisualizacao(float x, float y, color cor, String rotulo) {
+  noStroke();
+  fill(cor);
+  ellipse(x, y, 16, 16);
+
+  fill(#FFFFFF);
+  textFont(fonteExportarTexto);
+  textSize(14);
+  textAlign(LEFT, CENTER);
+  text(rotulo, x + 24, y - 1);
+}
+
+boolean detalhesVisualizacaoMousePressed(float mx, float my) {
+  if (clicouBotaoDetalhesVisualizacao(mx, my)) {
+    painelDetalhesVisualizacaoAberto = !painelDetalhesVisualizacaoAberto;
+    return true;
+  }
+
+  return painelDetalhesVisualizacaoAberto && dentroPainelDetalhesVisualizacao(mx, my);
+}
+
+boolean clicouBotaoDetalhesVisualizacao(float mx, float my) {
+  return dist(mx, my, botaoDetalhesVisualizacaoCentroX(), botaoDetalhesVisualizacaoCentroY()) <= botaoDetalhesVisualizacaoD() * 0.65f;
+}
+
+boolean dentroPainelDetalhesVisualizacao(float mx, float my) {
+  return mx >= painelDetalhesVisualizacaoX() && mx <= painelDetalhesVisualizacaoX() + painelDetalhesVisualizacaoW() &&
+    my >= painelDetalhesVisualizacaoY() && my <= painelDetalhesVisualizacaoY() + painelDetalhesVisualizacaoH();
+}
+
+float botaoDetalhesVisualizacaoCentroX() {
+  return botaoVisualizacaoX() + 40;
+}
+
+float botaoDetalhesVisualizacaoCentroY() {
+  return botaoVisualizacaoY() + botaoVisualizacaoH() + 14;
+}
+
+float botaoDetalhesVisualizacaoD() {
+  return 18;
+}
+
+float painelDetalhesVisualizacaoX() {
+  float margem = 12;
+  float minX = LAYOUT_FILTRO_W + margem;
+  float maxX = max(minX, direitaVisualLayout() - painelDetalhesVisualizacaoW() - margem);
+  return constrain(botaoVisualizacaoX() + botaoVisualizacaoW() - painelDetalhesVisualizacaoW(), minX, maxX);
+}
+
+float painelDetalhesVisualizacaoY() {
+  float margem = 12;
+  float desejado = botaoDetalhesVisualizacaoCentroY() + 20;
+  float maxY = max(margem, height - painelDetalhesVisualizacaoH() - margem);
+  return constrain(desejado, margem, maxY);
+}
+
+float painelDetalhesVisualizacaoW() {
+  return 220;
+}
+
+float painelDetalhesVisualizacaoH() {
+  return 180;
+}
+
 void desenharBotaoExportar() {
   float bx = botaoExportarX();
   float by = botaoExportarY();
-  float d = 78;
 
   pushStyle();
-  noFill();
-  stroke(#FFFFFF);
-  strokeWeight(3);
-  ellipse(bx + d/2, by + d/2, d, d);
-
   if (iconeExportar != null) {
-    tint(#FFFFFF);
-    image(iconeExportar, bx + 20, by + 20, 38, 38);
+    tint(temaCorLinhaVisualPrototipo());
+    image(iconeExportar, bx, by, 46, 46);
     noTint();
   } else {
-    desenharIconeExportarVetorial(bx + d/2, by + d/2);
+    desenharIconeExportarVetorial(bx + 23, by + 23);
   }
   popStyle();
 }
 
 void desenharIconeExportarVetorial(float cx, float cy) {
-  stroke(#FFFFFF);
-  strokeWeight(5);
+  stroke(temaCorLinhaVisualPrototipo());
+  strokeWeight(3);
   strokeCap(SQUARE);
   noFill();
-  line(cx, cy - 18, cx, cy + 8);
-  line(cx - 13, cy - 4, cx, cy + 9);
-  line(cx + 13, cy - 4, cx, cy + 9);
-  rect(cx - 21, cy + 10, 42, 20);
+  line(cx, cy - 11, cx, cy + 5);
+  line(cx - 8, cy - 2, cx, cy + 6);
+  line(cx + 8, cy - 2, cx, cy + 6);
+  rect(cx - 13, cy + 7, 26, 12);
 }
 
 void desenharPainelExportacao() {
@@ -207,71 +354,72 @@ void desenharPainelExportacao() {
   fill(#FFFFFF);
   textFont(fonteExportarTitulo);
   textAlign(LEFT, TOP);
-  text("Exportar", px + 28, py + 18);
+  text("Exportar", px + 18, py + 14);
 
-  desenharOpcaoFormatoExportacao("PDF", px + 28, py + 92);
-  desenharOpcaoFormatoExportacao("JPG", px + 28, py + 166);
-  desenharOpcaoFormatoExportacao("SVG", px + 28, py + 240);
+  desenharOpcaoFormatoExportacao("PDF", px + 18, py + 58);
+  desenharOpcaoFormatoExportacao("JPG", px + 18, py + 99);
+  desenharOpcaoFormatoExportacao("SVG", px + 18, py + 140);
 
-  desenharChecklistExportacao(px + 274, py + 96);
-  desenharMensagemExportacao(px + 28, py + ph - 34, pw - 56);
+  desenharChecklistExportacao(px + 154, py + 65);
+  desenharMensagemExportacao(px + 18, py + ph - 18, pw - 36);
   popStyle();
 }
 
 void desenharOpcaoFormatoExportacao(String formato, float x, float y) {
-  float w = 210;
-  float h = 55;
+  float w = 118;
+  float h = 32;
   noStroke();
   fill(#000000);
-  rect(x, y, w, h, 6);
+  rect(x, y, w, h, 5);
 
   fill(#FFFFFF);
   textFont(fonteExportarOpcao);
+  textSize(22);
   textAlign(LEFT, CENTER);
-  text(formato, x + 20, y + h/2 - 2);
+  text(formato, x + 13, y + h/2 - 2);
 
   noFill();
   stroke(#FFFFFF);
-  strokeWeight(3);
-  ellipse(x + w - 28, y + h/2, 27, 27);
-  strokeWeight(2.5f);
-  line(x + w - 28, y + h/2 - 10, x + w - 28, y + h/2 + 3);
-  line(x + w - 36, y + h/2 - 3, x + w - 28, y + h/2 + 5);
-  line(x + w - 20, y + h/2 - 3, x + w - 28, y + h/2 + 5);
-  line(x + w - 37, y + h/2 + 9, x + w - 19, y + h/2 + 9);
+  strokeWeight(2);
+  ellipse(x + w - 21, y + h/2, 18, 18);
+  strokeWeight(1.7f);
+  line(x + w - 21, y + h/2 - 7, x + w - 21, y + h/2 + 2);
+  line(x + w - 26, y + h/2 - 2, x + w - 21, y + h/2 + 4);
+  line(x + w - 16, y + h/2 - 2, x + w - 21, y + h/2 + 4);
+  line(x + w - 27, y + h/2 + 7, x + w - 15, y + h/2 + 7);
 }
 
 void desenharChecklistExportacao(float x, float y) {
   fill(#FFFFFF);
   textFont(fonteExportarTexto);
-  textSize(16);
+  textSize(11);
   textAlign(LEFT, TOP);
   text("Visualizacoes", x, y - 32);
 
   desenharCheckExportacao("Circular", exportarCircular, x, y);
-  desenharCheckExportacao("Bolhas", exportarBolhas, x, y + 42);
-  desenharCheckExportacao("Linha do tempo", exportarLinhaTempo, x, y + 84);
+  desenharCheckExportacao("Bolhas", exportarBolhas, x, y + 32);
+  desenharCheckExportacao("Linha do tempo", exportarLinhaTempo, x, y + 64);
 }
 
 void desenharCheckExportacao(String rotulo, boolean ativo, float x, float y) {
   stroke(#FFFFFF);
   strokeWeight(2);
   fill(ativo ? #FFCB00 : #111111);
-  rect(x, y, 22, 22, 4);
+  rect(x, y, 16, 16, 3);
 
   if (ativo) {
     stroke(#000000);
-    strokeWeight(3);
-    line(x + 5, y + 11, x + 10, y + 17);
-    line(x + 10, y + 17, x + 18, y + 5);
+    strokeWeight(2.3f);
+    line(x + 4, y + 8, x + 7, y + 12);
+    line(x + 7, y + 12, x + 13, y + 4);
   }
 
   fill(#FFFFFF);
   noStroke();
   textFont(fonteExportarTexto);
-  textSize(16);
+  textSize(11);
   textAlign(LEFT, CENTER);
-  text(rotulo, x + 34, y + 11);
+  text(rotulo, x + 22, y + 8);
 }
 
 void desenharMensagemExportacao(float x, float y, float largura) {
@@ -322,35 +470,35 @@ boolean exportacaoMousePressed(float mx, float my) {
 }
 
 boolean clicouBotaoExportar(float mx, float my) {
-  float cx = botaoExportarX() + 39;
-  float cy = botaoExportarY() + 39;
-  return dist(mx, my, cx, cy) <= 42;
+  float cx = botaoExportarX() + 23;
+  float cy = botaoExportarY() + 23;
+  return dist(mx, my, cx, cy) <= 24;
 }
 
 boolean clicouFormatoExportacao(float mx, float my, String formato) {
-  float x = painelExportacaoX() + 28;
-  float y = painelExportacaoY() + 92;
+  float x = painelExportacaoX() + 18;
+  float y = painelExportacaoY() + 58;
   if (formato.equals("JPG")) {
-    y += 74;
+    y += 41;
   } else if (formato.equals("SVG")) {
-    y += 148;
+    y += 82;
   }
-  return mx >= x && mx <= x + 210 && my >= y && my <= y + 55;
+  return mx >= x && mx <= x + 118 && my >= y && my <= y + 32;
 }
 
 boolean clicouChecklistExportacao(float mx, float my) {
-  float x = painelExportacaoX() + 274;
-  float y = painelExportacaoY() + 96;
+  float x = painelExportacaoX() + 154;
+  float y = painelExportacaoY() + 65;
 
   if (clicouCheck(mx, my, x, y)) {
     exportarCircular = !exportarCircular;
     return true;
   }
-  if (clicouCheck(mx, my, x, y + 42)) {
+  if (clicouCheck(mx, my, x, y + 32)) {
     exportarBolhas = !exportarBolhas;
     return true;
   }
-  if (clicouCheck(mx, my, x, y + 84)) {
+  if (clicouCheck(mx, my, x, y + 64)) {
     exportarLinhaTempo = !exportarLinhaTempo;
     return true;
   }
@@ -358,7 +506,7 @@ boolean clicouChecklistExportacao(float mx, float my) {
 }
 
 boolean clicouCheck(float mx, float my, float x, float y) {
-  return mx >= x && mx <= x + 220 && my >= y - 8 && my <= y + 30;
+  return mx >= x && mx <= x + 110 && my >= y - 6 && my <= y + 22;
 }
 
 boolean dentroPainelExportacao(float mx, float my) {
@@ -367,27 +515,33 @@ boolean dentroPainelExportacao(float mx, float my) {
 }
 
 float botaoExportarX() {
-  return LAYOUT_FILTRO_W + 38;
+  return LAYOUT_FILTRO_W + 44;
 }
 
 float botaoExportarY() {
-  return 50;
+  return botaoVisualizacaoY() + botaoVisualizacaoH()/2.0f - 23;
 }
 
 float painelExportacaoX() {
-  return LAYOUT_FILTRO_W + 150;
+  float margem = 12;
+  float minX = LAYOUT_FILTRO_W + margem;
+  float maxX = max(minX, direitaVisualLayout() - painelExportacaoW() - margem);
+  return constrain(botaoExportarX() + 64, minX, maxX);
 }
 
 float painelExportacaoY() {
-  return 50;
+  float margem = 12;
+  float desejado = botaoExportarY() + 52;
+  float maxY = max(margem, height - painelExportacaoH() - margem);
+  return constrain(desejado, margem, maxY);
 }
 
 float painelExportacaoW() {
-  return min(475, max(340, larguraVisualLayout() - 190));
+  return 275;
 }
 
 float painelExportacaoH() {
-  return 350;
+  return 200;
 }
 
 void exportarVisualizacoesSelecionadas(String formato) {
@@ -473,16 +627,12 @@ class VisualizacaoBolhasEmpacotadas {
 
   final int X = 255;
   final int Y = 0;
-  final int W = 1166;
-  final int H = 1080;
-  final int TIMELINE_W = 1158;
   final int TIMELINE_H = 100;
   final int TIMELINE_HANDLE_W = 7;
   final int TIMELINE_HANDLE_H = 70;
   final int ANO_MIN = 1880;
   final int ANO_MAX = 2010;
 
-  final color COR_FUNDO = #111111;
   final color COR_BOLHA = #D9D9D9;
   final color COR_TEXTO = #000000;
   final color COR_NACIONAL = #FFCB00;
@@ -534,13 +684,13 @@ class VisualizacaoBolhasEmpacotadas {
 
   void desenharFundo() {
     noStroke();
-    fill(COR_FUNDO);
+    fill(temaCorFundoVisualPrototipo());
     rect(X, Y, larguraVisual(), alturaVisual());
   }
 
   void desenharCirculoExterno(float cx, float cy, float raio) {
     noFill();
-    stroke(#FFFFFF);
+    stroke(temaCorLinhaVisualPrototipo());
     strokeWeight(4);
     ellipse(cx, cy, raio * 2, raio * 2);
   }
@@ -595,7 +745,7 @@ class VisualizacaoBolhasEmpacotadas {
   }
 
   void desenharMensagemVazia(float cx, float cy) {
-    fill(#FFFFFF, 180);
+    fill(temaCorTextoVisualPrototipo(), 180);
     textFont(fontePequena);
     textSize(16);
     textAlign(CENTER, CENTER);
@@ -644,7 +794,7 @@ class VisualizacaoBolhasEmpacotadas {
     float ty = limiteInferiorVisual();
 
     noStroke();
-    fill(#505050);
+    fill(temaCorTimelineFundoPrototipo());
     rect(tx, ty + 40, timelineW(), 60);
 
     float xInicio = xAno(anoInicio);
@@ -655,7 +805,7 @@ class VisualizacaoBolhasEmpacotadas {
     float faixaX = xInicio + TIMELINE_HANDLE_W;
     float faixaW = max(0, xFim - xInicio - TIMELINE_HANDLE_W);
     clip(round(faixaX), round(ty + 40), round(faixaW), 60);
-    stroke(#202020);
+    stroke(temaCorTimelineHachuraPrototipo());
     strokeWeight(3);
     for (float hx = xInicio - 60; hx < xFim; hx += 18) {
       line(hx, ty + 100, hx + 58, ty + 40);
@@ -663,11 +813,11 @@ class VisualizacaoBolhasEmpacotadas {
     noClip();
 
     noStroke();
-    fill(#505050);
+    fill(temaCorTimelineFundoPrototipo());
     rect(tx, ty + 40, max(0, faixaX - tx), 60);
     rect(xFim, ty + 40, max(0, tx + timelineW() - xFim), 60);
 
-    fill(#FFFFFF);
+    fill(temaCorTextoVisualPrototipo());
     rect(xInicio, ty + 10, TIMELINE_HANDLE_W, TIMELINE_HANDLE_H);
     rect(xFim, ty + 10, TIMELINE_HANDLE_W, TIMELINE_HANDLE_H);
 
@@ -676,7 +826,7 @@ class VisualizacaoBolhasEmpacotadas {
   }
 
   void desenharAnoTimeline(int ano, float x, float ty) {
-    fill(#FFFFFF);
+    fill(temaCorTextoVisualPrototipo());
     textFont(fonteAno);
     textSize(30);
     textAlign(CENTER, BOTTOM);
@@ -830,9 +980,14 @@ class VisualizacaoBolhasEmpacotadas {
       }
     }
 
-    for (int iteracao = 0; iteracao < 420; iteracao++) {
+    int totalIteracoes = iteracoesRelaxamento(grupos);
+    for (int iteracao = 0; iteracao < totalIteracoes; iteracao++) {
       relaxarGrupos(grupos, cx, cy, raioExterno);
     }
+  }
+
+  int iteracoesRelaxamento(ArrayList<GrupoBolha> grupos) {
+    return int(constrain(120 + grupos.size() * 12, 160, 320));
   }
 
   void relaxarGrupos(ArrayList<GrupoBolha> grupos, float cx, float cy, float raioExterno) {

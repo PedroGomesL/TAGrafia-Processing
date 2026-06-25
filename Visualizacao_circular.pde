@@ -41,11 +41,8 @@ class VisualizacaoCircular {
 
   final int X = 255;
   final int Y = 0;
-  final int W = 1166;
-  final int H = 1080;
   final int CIRCLE_SIZE = 700;
   final int SLOTS_CIRCULO = 38;
-  final int TIMELINE_W = 1158;
   final int TIMELINE_H = 100;
   final int TIMELINE_HANDLE_W = 7;
   final int TIMELINE_HANDLE_H = 70;
@@ -63,7 +60,6 @@ class VisualizacaoCircular {
   PFont fonteAno;
   PFont fonteFiltro;
 
-  boolean temaEscuro = true;
   int anoInicio = 1880;
   int anoFim = 2010;
   int handleArrastado = 0;
@@ -94,7 +90,7 @@ class VisualizacaoCircular {
 
   void desenharFundo() {
     noStroke();
-    fill(temaEscuro ? #000000 : #FFFFFF);
+    fill(temaCorFundoVisualPrototipo());
     rect(X, Y, larguraVisual(), alturaVisual());
   }
 
@@ -248,7 +244,7 @@ class VisualizacaoCircular {
   }
 
   void desenharNomeTagDestaque(TagFiltro tag, float cx, float y) {
-    fill(temaEscuro ? #FFFFFF : #111111);
+    fill(temaCorTextoVisualPrototipo());
     textFont(fonteFiltro);
     textSize(13);
     textAlign(CENTER, TOP);
@@ -256,7 +252,7 @@ class VisualizacaoCircular {
   }
 
   void desenharMensagemVazia(float cx, float cy) {
-    fill(temaEscuro ? #FFFFFF : #111111, 170);
+    fill(temaCorTextoVisualPrototipo(), 170);
     textFont(fonteFiltro);
     textSize(16);
     textAlign(CENTER, CENTER);
@@ -268,7 +264,7 @@ class VisualizacaoCircular {
     float ty = limiteInferiorVisual();
 
     noStroke();
-    fill(temaEscuro ? #505050 : #D7D7D7);
+    fill(temaCorTimelineFundoPrototipo());
     rect(tx, ty + 40, timelineW(), 60);
 
     float xInicio = xAno(anoInicio);
@@ -279,7 +275,7 @@ class VisualizacaoCircular {
     float faixaX = xInicio + TIMELINE_HANDLE_W;
     float faixaW = max(0, xFim - xInicio - TIMELINE_HANDLE_W);
     clip(round(faixaX), round(ty + 40), round(faixaW), 60);
-    stroke(temaEscuro ? #202020 : #B08A00);
+    stroke(temaCorTimelineHachuraPrototipo());
     strokeWeight(3);
     for (float hx = xInicio - 60; hx < xFim; hx += 18) {
       line(hx, ty + 100, hx + 58, ty + 40);
@@ -287,12 +283,12 @@ class VisualizacaoCircular {
     noClip();
 
     noStroke();
-    fill(temaEscuro ? #505050 : #D7D7D7);
+    fill(temaCorTimelineFundoPrototipo());
     rect(tx, ty + 40, max(0, faixaX - tx), 60);
     rect(xFim, ty + 40, max(0, tx + timelineW() - xFim), 60);
 
     noStroke();
-    fill(#FFFFFF);
+    fill(temaCorTextoVisualPrototipo());
     rect(xInicio, ty + 10, TIMELINE_HANDLE_W, TIMELINE_HANDLE_H);
     rect(xFim, ty + 10, TIMELINE_HANDLE_W, TIMELINE_HANDLE_H);
 
@@ -301,7 +297,7 @@ class VisualizacaoCircular {
   }
 
   void desenharAnoTimeline(int ano, float x, float ty) {
-    fill(temaEscuro ? #FFFFFF : #111111);
+    fill(temaCorTextoVisualPrototipo());
     textFont(fonteAno);
     textSize(30);
     textAlign(CENTER, BOTTOM);
@@ -659,7 +655,7 @@ class VisualizacaoCircular {
   }
 
   color corCirculo() {
-    return temaEscuro ? #FFFFFF : #111111;
+    return temaCorLinhaVisualPrototipo();
   }
 
   float tamanhoTextoProduto(String texto, float largura) {
