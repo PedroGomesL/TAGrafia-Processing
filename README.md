@@ -41,8 +41,9 @@ Para testar o sistema localmente, siga os passos abaixo:
 *   **Tela de Correlação:** Atualmente, a funcionalidade de correlação sugere apenas obras similares. A capacidade de sugerir e relacionar eventos, contextos históricos ou escolas de design não integra o escopo desta versão.
 *   **Visualização Geográfica:** A proposta de visualização em formato de mapa-múndi não foi implementada na versão final e permanece como sugestão para trabalhos futuros.
 
-## Autor e orientador
+## Autoria e Orientação
 
-**Pedro Henrique Gomes Lima**
-**José Neto de Faria"**
+* **Autor:** Pedro Henrique Gomes Lima
+* **Orientador:** José Neto de Faria
+
 Bacharelado em Design Digital – Universidade Federal do Ceará (UFC)
