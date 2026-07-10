@@ -34,8 +34,13 @@ Para testar o sistema localmente, siga os passos abaixo:
 1.  Faça o download e a instalação da IDE do [Processing](https://processing.org/download).
 2.  Clone este repositório para a sua máquina local (`git clone <link-do-repositorio>`) ou faça o download em zip.
 3.  Abra a pasta do projeto e execute o arquivo principal `.pde` com o Processing.
-4.  Pressione o botão "Run" (Executar) na IDE.
-
+5.  Clique em sketch no menu superior
+6.  Clique em importa biblioteca
+7.  Clique em Menage library
+8.  Na nova tela digite na barra de pesquisa "JAVAFX"
+9.  Clique na biblioteca JAVAFX e clique em instalar.
+10. Ao terminar a instalação feche a tela e Pressione o botão "Run" (Executar) na IDE.
+    
 ## Limitações da Versão Atual
 
 *   **Tela de Correlação:** Atualmente, a funcionalidade de correlação sugere apenas obras similares. A capacidade de sugerir e relacionar eventos, contextos históricos ou escolas de design não integra o escopo desta versão.
